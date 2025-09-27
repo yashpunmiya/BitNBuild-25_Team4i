@@ -94,6 +94,16 @@ Visit `http://localhost:3000` for the landing page, and `http://localhost:3000/c
 5. Wallet signs the partially signed transaction (0-lamport self-transfer enforces signature).
 6. `/api/claim/finalize` adds organizer fee-payer signature, sends the transaction, and marks claim as claimed.
 
+## End-to-end checklist
+
+1. **Fund Bundlr** – Use the fee payer keypair on devnet Bundlr (`https://devnet.bundlr.network`) so uploads succeed.
+2. **Create event** – From `/organizer`, submit name + description. The server mints a collection NFT and stores the event in Supabase.
+3. **Generate claim codes** – Select the event and request 1–100 codes. The API inserts rows into `claims` and returns the generated codes for download/testing.
+4. **Distribute codes** – Turn each code into a QR that points to `/claim/<code>`.
+5. **Visitor claim** – Attendee hits the claim URL, signs in with a wallet, snaps a picture, and triggers `/api/claim/build`.
+6. **Finalize mint** – The visitor signs the partially signed transaction, then `/api/claim/finalize` adds the fee payer signature and broadcasts.
+7. **Verify** – Supabase marks the claim `claimed`, storing the wallet and signature for audit.
+
 ## Anchor deployment cheatsheet
 
 These commands assume your Anchor program lives alongside this repo (adjust paths as needed).

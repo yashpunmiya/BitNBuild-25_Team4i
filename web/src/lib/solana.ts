@@ -2,9 +2,11 @@
 import { PublicKey as Web3PublicKey, SystemProgram } from '@solana/web3.js';
 import {
   createNft,
+  fetchMetadataFromSeeds,
   findMasterEditionPda,
   findMetadataPda,
   setAndVerifyCollection,
+  setAndVerifySizedCollectionItem,
 } from '@metaplex-foundation/mpl-token-metadata';
 import {
   generateSigner,
@@ -13,6 +15,7 @@ import {
   signTransaction,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
+import { isSome } from '@metaplex-foundation/umi-options';
 import bs58 from 'bs58';
 
 import type { EventRow } from './supabase';
@@ -59,7 +62,6 @@ export const createCollectionNft = async (
     uri: metadataUri,
     sellerFeeBasisPoints: percentAmount(0),
     isCollection: true,
-    collectionDetails: { __kind: 'V1', size: 0 },
   }).setFeePayer(feePayer);
 
   const latestBlockhash = await umi.rpc.getLatestBlockhash();
@@ -158,16 +160,33 @@ export const buildClaimTransaction = async (
     mint: collectionMintPublicKey,
   });
 
+  const collectionMetadataAccount = await fetchMetadataFromSeeds(umi, {
+    mint: collectionMintPublicKey,
+  });
+
+  const collectionDetails = collectionMetadataAccount.collectionDetails;
+  const isSizedCollection = isSome(collectionDetails);
+
   builder = builder.append(
-    setAndVerifyCollection(umi, {
-      metadata: assetMetadata,
-      collectionAuthority,
-      payer: feePayer,
-      updateAuthority: collectionAuthority.publicKey,
-      collectionMint: collectionMintPublicKey,
-      collection: collectionMetadata,
-      collectionMasterEditionAccount: collectionMasterEdition,
-    }),
+    isSizedCollection
+      ? setAndVerifySizedCollectionItem(umi, {
+          metadata: assetMetadata,
+          collectionAuthority,
+          payer: feePayer,
+          updateAuthority: collectionAuthority.publicKey,
+          collectionMint: collectionMintPublicKey,
+          collection: collectionMetadata,
+          collectionMasterEditionAccount: collectionMasterEdition,
+        })
+      : setAndVerifyCollection(umi, {
+          metadata: assetMetadata,
+          collectionAuthority,
+          payer: feePayer,
+          updateAuthority: collectionAuthority.publicKey,
+          collectionMint: collectionMintPublicKey,
+          collection: collectionMetadata,
+          collectionMasterEditionAccount: collectionMasterEdition,
+        }),
   );
 
   builder = builder.append(createOwnerValidationInstruction(ownerPublicKey));

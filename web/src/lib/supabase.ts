@@ -29,23 +29,42 @@ export type ClaimWithEvent = ClaimRow & {
 
 let adminClient: SupabaseClient | undefined;
 
-const normalizeEventRow = (row: Record<string, any>): EventRow => ({
-  id: row.id,
-  name: row.name,
-  description: row.description,
-  collectionMint: row.collectionMint ?? row.collectionmint,
-  createdAt: row.createdAt ?? row.createdat,
+type SupabaseRow = Record<string, unknown>;
+
+const getString = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  return value != null ? String(value) : '';
+};
+
+const getOptionalString = (value: unknown): string | null => {
+  if (value == null) {
+    return null;
+  }
+
+  const stringValue = getString(value);
+  return stringValue.length > 0 ? stringValue : null;
+};
+
+const normalizeEventRow = (row: SupabaseRow): EventRow => ({
+  id: getString(row.id),
+  name: getString(row.name),
+  description: getString(row.description),
+  collectionMint: getString(row.collectionMint ?? row.collectionmint),
+  createdAt: getString(row.createdAt ?? row.createdat),
 });
 
-const normalizeClaimRow = (row: Record<string, any>): ClaimRow => ({
-  id: row.id,
-  eventId: row.eventId ?? row.eventid,
-  code: row.code,
-  status: row.status as ClaimStatus,
-  wallet: row.wallet ?? null,
-  txSig: row.txSig ?? row.txsig ?? null,
-  createdAt: row.createdAt ?? row.createdat,
-  updatedAt: row.updatedAt ?? row.updatedat,
+const normalizeClaimRow = (row: SupabaseRow): ClaimRow => ({
+  id: getString(row.id),
+  eventId: getString(row.eventId ?? row.eventid ?? row['event_id']),
+  code: getString(row.code),
+  status: (row.status as ClaimStatus) ?? 'unused',
+  wallet: getOptionalString(row.wallet ?? row['wallet']),
+  txSig: getOptionalString(row.txSig ?? row['txSig'] ?? row['txsig']),
+  createdAt: getString(row.createdAt ?? row.createdat),
+  updatedAt: getString(row.updatedAt ?? row.updatedat),
 });
 
 const getSupabaseAdmin = (): SupabaseClient => {

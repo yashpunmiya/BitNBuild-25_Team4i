@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type PostgrestError } from '@supabase/supabase-js';
 
 import { getServerConfig } from '@/lib/env';
+
+const CLAIM_EVENT_COLUMN_CANDIDATES = ['eventId', 'eventid', 'event_id'] as const;
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -37,37 +39,57 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Generate claim codes
-    const codes: Array<Record<string, unknown>> = [];
-    for (let i = 0; i < count; i++) {
-      const code = randomUUID();
-      codes.push({
-        eventId,
-        eventid: eventId,
+    const baseCodes = Array.from({ length: count }, () => ({
+      code: randomUUID(),
+      status: 'unused' as const,
+    }));
+
+  let insertedCodes: Array<Record<string, unknown>> | null = null;
+    let resolvedColumn: (typeof CLAIM_EVENT_COLUMN_CANDIDATES)[number] | null = null;
+  let lastError: PostgrestError | null = null;
+
+    for (const column of CLAIM_EVENT_COLUMN_CANDIDATES) {
+      const rows = baseCodes.map(({ code, status }) => ({
+        [column]: eventId,
         code,
-        status: 'unused',
-      });
+        status,
+      }));
+
+      const { data, error } = await supabase
+        .from('claims')
+        .insert(rows)
+        .select(['id', 'code', 'status', column].join(', '));
+
+      if (!error && data) {
+        insertedCodes = data as unknown as Array<Record<string, unknown>>;
+        resolvedColumn = column;
+        break;
+      }
+
+      lastError = error;
+
+      if (!error || error?.code !== 'PGRST204') {
+        console.error('Failed to insert claim codes:', error);
+        return NextResponse.json(
+          { error: 'Failed to generate claim codes' },
+          { status: 500 }
+        );
+      }
     }
 
-    // Insert claim codes
-    const { data: insertedCodes, error: insertError } = await supabase
-      .from('claims')
-      .insert(codes)
-      .select('id, code, status, eventId, eventid');
-
-    if (insertError) {
-      console.error('Failed to insert claim codes:', insertError);
+    if (!insertedCodes || !resolvedColumn) {
+      console.error('Claims table missing event reference column', lastError);
       return NextResponse.json(
-        { error: 'Failed to generate claim codes' },
+        { error: 'Claims table missing event reference column' },
         { status: 500 }
       );
     }
 
-    const normalizedCodes = (insertedCodes ?? []).map((row) => ({
-      id: row.id,
-      code: row.code,
-      status: row.status,
-      eventId: row.eventId ?? row.eventid,
+    const normalizedCodes = insertedCodes.map((row) => ({
+      id: String(row.id ?? ''),
+      code: String(row.code ?? ''),
+      status: String(row.status ?? 'unused'),
+      eventId: String(row[resolvedColumn] ?? eventId),
     }));
 
     return NextResponse.json({

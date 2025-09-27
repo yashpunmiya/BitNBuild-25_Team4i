@@ -17,7 +17,7 @@ export async function GET(): Promise<NextResponse> {
       },
     });
 
-    const { data: testConnection, error: dbError } = await supabase
+    const { error: dbError } = await supabase
       .from('events')
       .select('count')
       .limit(1);
