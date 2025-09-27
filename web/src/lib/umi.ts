@@ -4,6 +4,7 @@ import {
   createSignerFromKeypair,
   type Signer,
   Umi,
+  signerIdentity,
 } from '@metaplex-foundation/umi';
 import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
 import { bundlrUploader } from '@metaplex-foundation/umi-uploader-bundlr';
@@ -14,6 +15,11 @@ import { getServerConfig } from './env';
 let umiSingleton: Umi | undefined;
 let feePayerSigner: Signer | undefined;
 let collectionAuthoritySigner: KeypairSigner | undefined;
+
+// Reset singletons during development
+if (process.env.NODE_ENV === 'development') {
+  umiSingleton = undefined;
+}
 
 const loadKeypair = (encoded: string, umi: Umi): KeypairSigner => {
   const secretKey = bs58.decode(encoded);
@@ -32,6 +38,10 @@ export const getUmi = (): Umi => {
           providerUrl: config.BUNDLR_PROVIDER_URL ?? config.SOLANA_RPC_URL,
         }),
       );
+    
+    // Set the fee payer as the default signer identity
+    const feePayer = loadKeypair(config.SOLANA_FEE_PAYER, umiSingleton);
+    umiSingleton = umiSingleton.use(signerIdentity(feePayer));
   }
 
   return umiSingleton;

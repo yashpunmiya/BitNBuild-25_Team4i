@@ -56,7 +56,7 @@ SUPABASE_URL=<supabase-url>
 SUPABASE_SERVICE_ROLE_KEY=<supabase-service-role>
 SOLANA_FEE_PAYER=<base58-secret-key>
 COLLECTION_AUTHORITY=<base58-secret-key>
-BUNDLR_RPC_URL=https://node1.bundlr.network
+BUNDLR_RPC_URL=https://devnet.bundlr.network
 BUNDLR_PROVIDER_URL=https://api.devnet.solana.com
 ```
 

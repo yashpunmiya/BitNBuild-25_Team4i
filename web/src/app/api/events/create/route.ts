@@ -13,13 +13,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const payload = schema.parse(await request.json());
     const { collectionMint } = await createCollectionNft(payload);
-    await insertEvent({
+    const event = await insertEvent({
       name: payload.name,
       description: payload.description,
       collectionMint,
     });
 
-    return NextResponse.json({ collectionMint });
+    return NextResponse.json({
+      event,
+      collectionMint: event.collectionMint,
+    });
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json(

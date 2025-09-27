@@ -3,9 +3,36 @@
 import { Buffer } from 'buffer';
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { VersionedTransaction } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+
+// Import WalletMultiButton with SSR disabled to prevent hydration mismatch
+const WalletMultiButton = dynamic(
+  () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletMultiButton),
+  { 
+    ssr: false,
+    loading: () => (
+      <button 
+        style={{
+          background: 'linear-gradient(135deg, #22d3ee, #0ea5e9)',
+          border: 'none',
+          borderRadius: '8px',
+          color: 'white',
+          padding: '0.5rem 1rem',
+          fontSize: '0.9rem',
+          fontWeight: '600',
+          cursor: 'not-allowed',
+          opacity: 0.7,
+          alignSelf: 'flex-start',
+        }}
+        disabled
+      >
+        Loading Wallet...
+      </button>
+    )
+  }
+);
 
 const containerStyle: CSSProperties = {
   maxWidth: '720px',

@@ -29,6 +29,25 @@ export type ClaimWithEvent = ClaimRow & {
 
 let adminClient: SupabaseClient | undefined;
 
+const normalizeEventRow = (row: Record<string, any>): EventRow => ({
+  id: row.id,
+  name: row.name,
+  description: row.description,
+  collectionMint: row.collectionMint ?? row.collectionmint,
+  createdAt: row.createdAt ?? row.createdat,
+});
+
+const normalizeClaimRow = (row: Record<string, any>): ClaimRow => ({
+  id: row.id,
+  eventId: row.eventId ?? row.eventid,
+  code: row.code,
+  status: row.status as ClaimStatus,
+  wallet: row.wallet ?? null,
+  txSig: row.txSig ?? row.txsig ?? null,
+  createdAt: row.createdAt ?? row.createdat,
+  updatedAt: row.updatedAt ?? row.updatedat,
+});
+
 const getSupabaseAdmin = (): SupabaseClient => {
   if (!adminClient) {
     const config = getServerConfig();
@@ -47,7 +66,12 @@ export const insertEvent = async (payload: Omit<EventRow, 'id' | 'createdAt'>): 
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from('events')
-    .insert(payload)
+    .insert({
+      name: payload.name,
+      description: payload.description,
+      collectionMint: payload.collectionMint,
+      collectionmint: payload.collectionMint,
+    })
     .select()
     .single();
 
@@ -55,7 +79,7 @@ export const insertEvent = async (payload: Omit<EventRow, 'id' | 'createdAt'>): 
     throw error ?? new Error('Failed to insert event');
   }
 
-  return data;
+  return normalizeEventRow(data);
 };
 
 export const getClaimByCode = async (code: string): Promise<ClaimWithEvent | null> => {
@@ -70,7 +94,20 @@ export const getClaimByCode = async (code: string): Promise<ClaimWithEvent | nul
     throw error;
   }
 
-  return data as ClaimWithEvent | null;
+  if (!data) {
+    return null;
+  }
+
+  if (!data.events) {
+    return null;
+  }
+
+  const claim = normalizeClaimRow(data);
+
+  return {
+    ...claim,
+    events: normalizeEventRow(data.events),
+  };
 };
 
 export const reserveClaim = async (code: string, wallet: string): Promise<ClaimRow | null> => {
@@ -87,7 +124,7 @@ export const reserveClaim = async (code: string, wallet: string): Promise<ClaimR
     throw error;
   }
 
-  return data ?? null;
+  return data ? normalizeClaimRow(data) : null;
 };
 
 export const markClaimFailed = async (code: string): Promise<void> => {
@@ -117,6 +154,6 @@ export const finalizeClaim = async (code: string, txSig: string): Promise<ClaimR
     throw error;
   }
 
-  return data ?? null;
+  return data ? normalizeClaimRow(data) : null;
 };
 
