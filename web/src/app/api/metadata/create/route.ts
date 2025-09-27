@@ -1,10 +1,12 @@
 ﻿import { Buffer } from 'buffer';
 import { NextRequest, NextResponse } from 'next/server';
+import sharp from 'sharp';
 import { ZodError, z } from 'zod';
 
 import { uploadImage, uploadMetadata } from '@/lib/storage';
 import { getClaimByCode } from '@/lib/supabase';
 import { getClaimNftName } from '@/lib/nft';
+import type { FrameConfig } from '@/lib/frame';
 
 const schema = z.object({
   code: z.string().min(1),
@@ -19,6 +21,60 @@ const parseDataUrl = (dataUrl: string): { contentType: string; buffer: Buffer } 
   return { contentType, buffer };
 };
 
+const buildSelfieWithFrame = async (
+  selfieBuffer: Buffer,
+  frameTemplateUrl: string | null,
+  frameConfig: FrameConfig | null,
+): Promise<{ buffer: Buffer; contentType: string }> => {
+  if (!frameTemplateUrl || !frameConfig?.selfie) {
+    return { buffer: selfieBuffer, contentType: 'image/png' };
+  }
+
+  try {
+    const templateResponse = await fetch(frameTemplateUrl);
+    if (!templateResponse.ok) {
+      throw new Error(`Template fetch failed with status ${templateResponse.status}`);
+    }
+
+    const templateArrayBuffer = await templateResponse.arrayBuffer();
+    const templateBuffer = Buffer.from(templateArrayBuffer);
+
+    const { x, y, width, height, borderRadius } = frameConfig.selfie;
+    const resizedSelfie = await sharp(selfieBuffer)
+      .resize(Math.round(width), Math.round(height), { fit: 'cover' })
+      .ensureAlpha()
+      .toBuffer();
+
+    let processedSelfie = resizedSelfie;
+
+    if (borderRadius && borderRadius > 0) {
+      const radius = Math.min(borderRadius, Math.min(width, height) / 2);
+      const svg = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${width}" height="${height}" rx="${radius}" ry="${radius}" /></svg>`;
+      processedSelfie = await sharp(resizedSelfie)
+        .composite([{ input: Buffer.from(svg), blend: 'dest-in' }])
+        .png()
+        .toBuffer();
+    }
+
+    const composed = await sharp(templateBuffer)
+      .composite([
+        {
+          input: processedSelfie,
+          top: Math.round(y),
+          left: Math.round(x),
+        },
+      ])
+      .png()
+      .toBuffer();
+
+    return { buffer: composed, contentType: 'image/png' };
+  } catch (error) {
+    console.error('Failed to compose frame template', error);
+    // Fallback to original selfie if composition fails
+    return { buffer: selfieBuffer, contentType: 'image/png' };
+  }
+};
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const payload = schema.parse(await request.json());
@@ -28,9 +84,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Claim code not found' }, { status: 404 });
     }
 
-    const { contentType, buffer } = parseDataUrl(payload.imageDataUrl);
+    const { buffer } = parseDataUrl(payload.imageDataUrl);
 
-    const imageUri = await uploadImage(buffer, contentType, `${payload.code}.png`);
+    const { buffer: framedBuffer, contentType } = await buildSelfieWithFrame(
+      buffer,
+      claim.events.frameTemplateUrl,
+      claim.events.frameConfig,
+    );
+
+    const imageUri = await uploadImage(framedBuffer, contentType, `${payload.code}.png`);
 
     const nftName = getClaimNftName(claim.events.name);
     const trimmedDescription = (claim.events.description ?? '').trim();

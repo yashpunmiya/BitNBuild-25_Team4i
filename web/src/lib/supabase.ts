@@ -1,6 +1,7 @@
 ﻿import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { getServerConfig } from './env';
+import { parseFrameConfig, serializeFrameConfig, type FrameConfig } from './frame';
 
 export type ClaimStatus = 'unused' | 'reserved' | 'claimed';
 
@@ -10,6 +11,8 @@ export type EventRow = {
   description: string;
   collectionMint: string;
   createdAt: string;
+  frameTemplateUrl: string | null;
+  frameConfig: FrameConfig | null;
 };
 
 export type ClaimRow = {
@@ -48,6 +51,44 @@ const CLAIM_CREATED_AT_COLUMN_CANDIDATES = ['createdAt', 'createdat', 'created_a
 const CLAIM_CREATED_AT_COLUMN_LIST = [...CLAIM_CREATED_AT_COLUMN_CANDIDATES];
 
 const CLAIM_RESERVATION_STATUSES: ClaimStatus[] = ['unused', 'reserved'];
+
+const EVENT_FRAME_TEMPLATE_COLUMN_CANDIDATES = [
+  'frameTemplateUrl',
+  'frametemplateurl',
+  'frame_template_url',
+] as const;
+
+const EVENT_FRAME_TEMPLATE_COLUMN_LIST = [...EVENT_FRAME_TEMPLATE_COLUMN_CANDIDATES];
+const CANONICAL_FRAME_TEMPLATE_COLUMN = 'frame_template_url';
+
+const EVENT_FRAME_CONFIG_COLUMN_CANDIDATES = [
+  'frameConfig',
+  'frameconfig',
+  'frame_config',
+] as const;
+
+const EVENT_FRAME_CONFIG_COLUMN_LIST = [...EVENT_FRAME_CONFIG_COLUMN_CANDIDATES];
+const CANONICAL_FRAME_CONFIG_COLUMN = 'frame_config';
+
+const mapToCanonicalFrameColumns = (columns: string[]): string[] => {
+  const canonical = new Set<string>();
+
+  for (const column of columns) {
+    if (EVENT_FRAME_TEMPLATE_COLUMN_LIST.includes(column as (typeof EVENT_FRAME_TEMPLATE_COLUMN_LIST)[number])) {
+      canonical.add(CANONICAL_FRAME_TEMPLATE_COLUMN);
+      continue;
+    }
+
+    if (EVENT_FRAME_CONFIG_COLUMN_LIST.includes(column as (typeof EVENT_FRAME_CONFIG_COLUMN_LIST)[number])) {
+      canonical.add(CANONICAL_FRAME_CONFIG_COLUMN);
+      continue;
+    }
+
+    canonical.add(column);
+  }
+
+  return [...canonical];
+};
 
 const pickValue = (row: SupabaseRow, keys: string[]): unknown => {
   for (const key of keys) {
@@ -91,6 +132,8 @@ const normalizeEventRow = (row: SupabaseRow): EventRow => ({
   description: getString(row.description),
   collectionMint: getString(pickValue(row, ['collectionMint', 'collectionmint'])),
   createdAt: getString(pickValue(row, ['createdAt', 'createdat'])),
+  frameTemplateUrl: getOptionalString(pickValue(row, EVENT_FRAME_TEMPLATE_COLUMN_LIST)),
+  frameConfig: parseFrameConfig(pickValue(row, EVENT_FRAME_CONFIG_COLUMN_LIST)),
 });
 
 const normalizeClaimRow = (row: SupabaseRow): ClaimRow => ({
@@ -118,7 +161,9 @@ const getSupabaseAdmin = (): SupabaseClient => {
   return adminClient;
 };
 
-export const insertEvent = async (payload: Omit<EventRow, 'id' | 'createdAt'>): Promise<EventRow> => {
+export const insertEvent = async (
+  payload: Omit<EventRow, 'id' | 'createdAt' | 'frameTemplateUrl' | 'frameConfig'>,
+): Promise<EventRow> => {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from('events')
@@ -138,6 +183,121 @@ export const insertEvent = async (payload: Omit<EventRow, 'id' | 'createdAt'>): 
   return normalizeEventRow(data);
 };
 
+export const getEventById = async (eventId: string): Promise<EventRow | null> => {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('id', eventId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ? normalizeEventRow(data) : null;
+};
+
+class MissingFrameColumnsError extends Error {
+  columns: string[];
+
+  constructor(columns: string[]) {
+    const canonicalColumns = mapToCanonicalFrameColumns(columns);
+    super(
+      `Missing required columns on events table for frame support: ${canonicalColumns
+        .map((column) => `"${column}"`)
+        .join(', ')}`,
+    );
+    this.name = 'MissingFrameColumnsError';
+    this.columns = canonicalColumns;
+  }
+}
+
+type FrameUpdateAttempt = {
+  status: 'skipped' | 'updated';
+  event?: EventRow;
+};
+
+const updateEventFrameForColumns = async (
+  eventId: string,
+  templateColumn: string | null,
+  configColumn: string | null,
+  updates: { templateUrl?: string | null; config?: FrameConfig | null },
+): Promise<FrameUpdateAttempt> => {
+  const payload: Record<string, unknown> = {};
+
+  if (templateColumn && Object.prototype.hasOwnProperty.call(updates, 'templateUrl')) {
+    payload[templateColumn] = updates.templateUrl ?? null;
+  }
+
+  if (configColumn && Object.prototype.hasOwnProperty.call(updates, 'config')) {
+    payload[configColumn] = serializeFrameConfig(updates.config);
+  }
+
+  const columns = Object.keys(payload);
+  if (columns.length === 0) {
+    return { status: 'skipped' };
+  }
+
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from('events')
+    .update(payload)
+    .eq('id', eventId)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingColumnError(error)) {
+      throw new MissingFrameColumnsError(columns);
+    }
+    throw error;
+  }
+
+  return { status: 'updated', event: data ? normalizeEventRow(data) : undefined };
+};
+
+export const updateEventFrame = async (
+  eventId: string,
+  updates: { templateUrl?: string | null; config?: FrameConfig | null },
+): Promise<EventRow> => {
+  const missingColumns = new Set<string>();
+
+  for (const templateColumn of [...EVENT_FRAME_TEMPLATE_COLUMN_CANDIDATES, null]) {
+    for (const configColumn of [...EVENT_FRAME_CONFIG_COLUMN_CANDIDATES, null]) {
+      let attempt: FrameUpdateAttempt | undefined;
+      try {
+        attempt = await updateEventFrameForColumns(eventId, templateColumn, configColumn, updates);
+        if (attempt.status === 'updated' && attempt.event) {
+          return attempt.event;
+        }
+      } catch (error) {
+        if (error instanceof MissingFrameColumnsError) {
+          for (const column of error.columns) {
+            missingColumns.add(column);
+          }
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
+
+  if (missingColumns.size > 0) {
+    throw new Error(
+      `Supabase events table is missing columns required for frame support. Add columns: "frame_template_url" (text) and "frame_config" (json or text). Missing columns detected: ${
+        [...missingColumns].join(', ')
+      }`,
+    );
+  }
+
+  const fallback = await getEventById(eventId);
+  if (!fallback) {
+    throw new Error('Event not found after update');
+  }
+
+  return fallback;
+};
 export const getClaimByCode = async (code: string): Promise<ClaimWithEvent | null> => {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
@@ -280,7 +440,7 @@ const reserveNextClaimForColumn = async (
     return null;
   }
 
-  const candidateRows = candidates as SupabaseRow[];
+  const candidateRows = (candidates as unknown as SupabaseRow[]) ?? [];
 
   for (const candidate of candidateRows) {
     const candidateId = getString(candidate.id);

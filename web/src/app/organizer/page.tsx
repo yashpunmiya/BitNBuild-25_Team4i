@@ -1,8 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
+
+import type { FrameConfig } from '@/lib/frame';
 
 // Import WalletMultiButton with SSR disabled to prevent hydration mismatch
 const WalletMultiButton = dynamic(
@@ -36,6 +39,8 @@ type Event = {
   description: string;
   collectionMint: string;
   createdAt: string;
+  frameTemplateUrl: string | null;
+  frameConfig: FrameConfig | null;
 };
 
 type ClaimCode = {
@@ -130,6 +135,29 @@ export default function OrganizerPage() {
   const [fundingMessage, setFundingMessage] = useState<string | null>(null);
   const [fundingError, setFundingError] = useState<string | null>(null);
   const [copyAddressMessage, setCopyAddressMessage] = useState<string | null>(null);
+
+  // Frame management state
+  const [selectedFrameEventId, setSelectedFrameEventId] = useState('');
+  const [frameConfigInputs, setFrameConfigInputs] = useState({
+    x: 320,
+    y: 320,
+    width: 640,
+    height: 640,
+    borderRadius: 0,
+  });
+  const [frameUploadPreview, setFrameUploadPreview] = useState<string | null>(null);
+  const [frameTemplatePreview, setFrameTemplatePreview] = useState<string | null>(null);
+  const [frameLoading, setFrameLoading] = useState(false);
+  const [frameError, setFrameError] = useState<string | null>(null);
+  const [frameMessage, setFrameMessage] = useState<string | null>(null);
+  const frameImageRef = useRef<HTMLImageElement | null>(null);
+  const [framePreviewNaturalSize, setFramePreviewNaturalSize] = useState<{ width: number; height: number } | null>(null);
+  const [framePreviewDisplaySize, setFramePreviewDisplaySize] = useState<{ width: number; height: number } | null>(null);
+
+  const selectedFrameEvent = useMemo(
+    () => events.find((event) => event.id === selectedFrameEventId) ?? null,
+    [events, selectedFrameEventId],
+  );
 
   // Event creation form
   const [eventName, setEventName] = useState('');
@@ -317,6 +345,140 @@ export default function OrganizerPage() {
     }
   }, [fetchFeePayerBalance, formatSol, shortenValue]);
 
+  const handleFrameInputChange = useCallback(
+    (field: keyof typeof frameConfigInputs, value: number) => {
+      setFrameConfigInputs((prev) => ({
+        ...prev,
+        [field]: Number.isFinite(value) ? value : prev[field],
+      }));
+    },
+    [],
+  );
+
+  const handleFrameFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      setFrameUploadPreview(null);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result;
+      if (typeof result === 'string') {
+        setFrameUploadPreview(result);
+        setFrameTemplatePreview(result);
+      }
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleFrameSubmit = useCallback(async () => {
+    if (!selectedFrameEventId) {
+      setFrameError('Select an event first.');
+      return;
+    }
+
+    setFrameLoading(true);
+    setFrameError(null);
+    setFrameMessage(null);
+
+    try {
+      const payload: Record<string, unknown> = {
+        eventId: selectedFrameEventId,
+        frameConfig: {
+          selfie: {
+            x: frameConfigInputs.x,
+            y: frameConfigInputs.y,
+            width: frameConfigInputs.width,
+            height: frameConfigInputs.height,
+            borderRadius: frameConfigInputs.borderRadius,
+          },
+        },
+      };
+
+      if (frameUploadPreview) {
+        payload.frameDataUrl = frameUploadPreview;
+      }
+
+      const response = await fetch('/api/events/frame/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.error ?? 'Failed to update frame');
+      }
+
+      const updatedEvent = data?.event as Event | undefined;
+      if (updatedEvent) {
+        setEvents((prev) =>
+          prev.map((event) => (event.id === updatedEvent.id ? updatedEvent : event)),
+        );
+        setFrameTemplatePreview(updatedEvent.frameTemplateUrl ?? frameUploadPreview ?? null);
+        setFrameUploadPreview(null);
+      }
+
+      setFrameMessage('Frame template saved. New claims will use the updated layout.');
+    } catch (frameUpdateError) {
+      setFrameError(
+        frameUpdateError instanceof Error
+          ? frameUpdateError.message
+          : 'Failed to update frame template',
+      );
+    } finally {
+      setFrameLoading(false);
+    }
+  }, [frameConfigInputs, frameUploadPreview, selectedFrameEventId, setEvents]);
+
+  const handleFrameImageLoaded = useCallback((target: HTMLImageElement) => {
+    frameImageRef.current = target;
+    setFramePreviewNaturalSize({ width: target.naturalWidth, height: target.naturalHeight });
+    const rect = target.getBoundingClientRect();
+    setFramePreviewDisplaySize({ width: rect.width, height: rect.height });
+  }, []);
+
+  useEffect(() => {
+    const updateDisplaySize = () => {
+      if (frameImageRef.current) {
+        const rect = frameImageRef.current.getBoundingClientRect();
+        setFramePreviewDisplaySize({ width: rect.width, height: rect.height });
+      }
+    };
+
+    window.addEventListener('resize', updateDisplaySize);
+    updateDisplaySize();
+
+    return () => {
+      window.removeEventListener('resize', updateDisplaySize);
+    };
+  }, [frameTemplatePreview]);
+
+  const frameOverlayStyle = useMemo(() => {
+    if (!framePreviewNaturalSize || !framePreviewDisplaySize) {
+      return null;
+    }
+
+    const scaleX = framePreviewDisplaySize.width / framePreviewNaturalSize.width;
+    const scaleY = framePreviewDisplaySize.height / framePreviewNaturalSize.height;
+
+    return {
+      position: 'absolute' as const,
+      left: frameConfigInputs.x * scaleX,
+      top: frameConfigInputs.y * scaleY,
+      width: frameConfigInputs.width * scaleX,
+      height: frameConfigInputs.height * scaleY,
+      borderRadius: frameConfigInputs.borderRadius * Math.min(scaleX, scaleY),
+      border: '2px dashed rgba(56,189,248,0.85)',
+      boxShadow: '0 0 0 1px rgba(14,165,233,0.4)',
+      pointerEvents: 'none' as const,
+    };
+  }, [frameConfigInputs, framePreviewDisplaySize, framePreviewNaturalSize]);
+
   useEffect(() => {
     void fetchFeePayerBalance();
   }, [fetchFeePayerBalance]);
@@ -326,6 +488,37 @@ export default function OrganizerPage() {
       setOrigin(window.location.origin);
     }
   }, []);
+
+  useEffect(() => {
+    if (!selectedFrameEvent) {
+      setFrameTemplatePreview(null);
+      setFrameUploadPreview(null);
+      setFrameConfigInputs((prev) => ({ ...prev, x: 320, y: 320, width: 640, height: 640 }));
+      setFramePreviewNaturalSize(null);
+      setFramePreviewDisplaySize(null);
+      setFrameError(null);
+      setFrameMessage(null);
+      return;
+    }
+
+    setFrameTemplatePreview(selectedFrameEvent.frameTemplateUrl ?? null);
+    setFrameUploadPreview(null);
+    setFramePreviewNaturalSize(null);
+    setFramePreviewDisplaySize(null);
+    setFrameError(null);
+    setFrameMessage(null);
+
+    if (selectedFrameEvent.frameConfig?.selfie) {
+      const { x, y, width, height, borderRadius } = selectedFrameEvent.frameConfig.selfie;
+      setFrameConfigInputs({
+        x,
+        y,
+        width,
+        height,
+        borderRadius: borderRadius ?? 0,
+      });
+    }
+  }, [selectedFrameEvent]);
 
   const dynamicClaimUrl = useMemo(() => {
     if (!selectedQrEventId) {
@@ -597,6 +790,182 @@ export default function OrganizerPage() {
               </div>
             ) : (
               <p style={{ opacity: 0.7 }}>Select an event to generate the dynamic QR code.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Frame Template Management */}
+      {events.length > 0 && (
+        <div style={cardStyle}>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Event Frame Template</h2>
+          <p style={{ marginBottom: '1rem', opacity: 0.8 }}>
+            Upload a base frame (PNG with transparency works best) and describe where the visitor selfie should
+            be placed. During minting we&apos;ll composite their photo onto this template, turning each NFT into a
+            branded badge.
+          </p>
+
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <select
+              value={selectedFrameEventId}
+              onChange={(event) => setSelectedFrameEventId(event.target.value)}
+              style={inputStyle}
+            >
+              <option value="">Select an event</option>
+              {events.map((event) => (
+                <option key={event.id} value={event.id}>
+                  {event.name}
+                </option>
+              ))}
+            </select>
+
+            {selectedFrameEventId ? (
+              <div
+                style={{
+                  display: 'grid',
+                  gap: '1rem',
+                }}
+              >
+                <div>
+                  <label
+                    htmlFor="frame-upload-input"
+                    style={{
+                      display: 'block',
+                      fontSize: '0.9rem',
+                      marginBottom: '0.5rem',
+                      opacity: 0.8,
+                    }}
+                  >
+                    Frame artwork (.png or .jpg)
+                  </label>
+                  <input
+                    id="frame-upload-input"
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    onChange={handleFrameFileChange}
+                    style={{ ...inputStyle, padding: '0.5rem' }}
+                  />
+                  <p style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '0.5rem' }}>
+                    Tip: match these coordinates to the template&apos;s pixel dimensions for precise placement.
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                    gap: '0.75rem',
+                  }}
+                >
+                  {([
+                    ['x', 'Selfie X (px)'],
+                    ['y', 'Selfie Y (px)'],
+                    ['width', 'Selfie Width (px)'],
+                    ['height', 'Selfie Height (px)'],
+                    ['borderRadius', 'Corner Radius (px)'],
+                  ] as const).map(([field, label]) => (
+                    <div key={field}>
+                      <label
+                        htmlFor={`frame-${field}`}
+                        style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', opacity: 0.75 }}
+                      >
+                        {label}
+                      </label>
+                      <input
+                        id={`frame-${field}`}
+                        type="number"
+                        value={frameConfigInputs[field]}
+                        onChange={(event) =>
+                          handleFrameInputChange(field, Number.parseFloat(event.target.value))
+                        }
+                        style={inputStyle}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div
+                  style={{
+                    border: '1px solid rgba(148,163,184,0.25)',
+                    borderRadius: '12px',
+                    padding: '1rem',
+                    background: 'rgba(15,23,42,0.45)',
+                    display: 'grid',
+                    gap: '0.75rem',
+                  }}
+                >
+                  <p style={{ fontSize: '0.9rem', opacity: 0.8, margin: 0 }}>Live preview</p>
+                  <div
+                    style={{
+                      position: 'relative',
+                      maxWidth: '420px',
+                      width: '100%',
+                      margin: '0 auto',
+                    }}
+                  >
+                    {frameTemplatePreview ? (
+                      <>
+                        <Image
+                          ref={frameImageRef}
+                          src={frameTemplatePreview}
+                          alt="Frame template preview"
+                          width={framePreviewNaturalSize?.width ?? 1200}
+                          height={framePreviewNaturalSize?.height ?? 1200}
+                          style={{ width: '100%', height: 'auto', borderRadius: '10px', display: 'block' }}
+                          onLoadingComplete={handleFrameImageLoaded}
+                          unoptimized
+                        />
+                        {frameOverlayStyle && <div style={frameOverlayStyle} />}
+                      </>
+                    ) : (
+                      <div
+                        style={{
+                          width: '100%',
+                          padding: '2.5rem 1rem',
+                          textAlign: 'center',
+                          borderRadius: '10px',
+                          border: '1px dashed rgba(148,163,184,0.4)',
+                          opacity: 0.65,
+                        }}
+                      >
+                        Upload a frame artwork to preview it here.
+                      </div>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '0.8rem', opacity: 0.65, margin: 0 }}>
+                    The dotted rectangle shows where the visitor photo will land after resizing.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    style={buttonStyle}
+                    onClick={() => {
+                      void handleFrameSubmit();
+                    }}
+                    disabled={frameLoading}
+                  >
+                    {frameLoading ? 'Saving frame…' : 'Save frame template'}
+                  </button>
+                  <button
+                    type="button"
+                    style={outlineButtonStyle}
+                    onClick={() => {
+                      setFrameUploadPreview(null);
+                      setFrameTemplatePreview(selectedFrameEvent?.frameTemplateUrl ?? null);
+                    }}
+                    disabled={frameLoading}
+                  >
+                    Reset upload
+                  </button>
+                </div>
+
+                {frameError && <p style={{ color: '#fda4af', margin: 0 }}>{frameError}</p>}
+                {frameMessage && <p style={{ color: '#34d399', margin: 0 }}>{frameMessage}</p>}
+              </div>
+            ) : (
+              <p style={{ opacity: 0.7 }}>Select an event to configure its frame template.</p>
             )}
           </div>
         </div>
