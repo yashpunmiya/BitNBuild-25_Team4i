@@ -27,9 +27,37 @@ export type ClaimWithEvent = ClaimRow & {
   events: EventRow;
 };
 
+const CLAIM_TX_SIGNATURE_COLUMNS = [
+  'txSig',
+  'txsig',
+  'tx_sig',
+  'txSignature',
+  'txsignature',
+  'tx_signature',
+];
+
 let adminClient: SupabaseClient | undefined;
 
 type SupabaseRow = Record<string, unknown>;
+
+const pickValue = (row: SupabaseRow, keys: string[]): unknown => {
+  for (const key of keys) {
+    if (key in row) {
+      return row[key];
+    }
+  }
+
+  return undefined;
+};
+
+const isMissingColumnError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const code = (error as { code?: string }).code;
+  return code === 'PGRST204';
+};
 
 const getString = (value: unknown): string => {
   if (typeof value === 'string') {
@@ -52,19 +80,19 @@ const normalizeEventRow = (row: SupabaseRow): EventRow => ({
   id: getString(row.id),
   name: getString(row.name),
   description: getString(row.description),
-  collectionMint: getString(row.collectionMint ?? row.collectionmint),
-  createdAt: getString(row.createdAt ?? row.createdat),
+  collectionMint: getString(pickValue(row, ['collectionMint', 'collectionmint'])),
+  createdAt: getString(pickValue(row, ['createdAt', 'createdat'])),
 });
 
 const normalizeClaimRow = (row: SupabaseRow): ClaimRow => ({
   id: getString(row.id),
-  eventId: getString(row.eventId ?? row.eventid ?? row['event_id']),
+  eventId: getString(pickValue(row, ['eventId', 'eventid', 'event_id'])),
   code: getString(row.code),
   status: (row.status as ClaimStatus) ?? 'unused',
-  wallet: getOptionalString(row.wallet ?? row['wallet']),
-  txSig: getOptionalString(row.txSig ?? row['txSig'] ?? row['txsig']),
-  createdAt: getString(row.createdAt ?? row.createdat),
-  updatedAt: getString(row.updatedAt ?? row.updatedat),
+  wallet: getOptionalString(pickValue(row, ['wallet'])),
+  txSig: getOptionalString(pickValue(row, CLAIM_TX_SIGNATURE_COLUMNS)),
+  createdAt: getString(pickValue(row, ['createdAt', 'createdat'])),
+  updatedAt: getString(pickValue(row, ['updatedAt', 'updatedat'])),
 });
 
 const getSupabaseAdmin = (): SupabaseClient => {
@@ -161,18 +189,35 @@ export const markClaimFailed = async (code: string): Promise<void> => {
 
 export const finalizeClaim = async (code: string, txSig: string): Promise<ClaimRow | null> => {
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase
-    .from('claims')
-    .update({ status: 'claimed', txSig })
-    .eq('code', code)
-    .eq('status', 'reserved')
-    .select()
-    .maybeSingle();
+  let lastError: unknown;
 
-  if (error) {
-    throw error;
+  for (const column of CLAIM_TX_SIGNATURE_COLUMNS) {
+    const payload: Record<string, unknown> = { status: 'claimed' };
+    payload[column] = txSig;
+
+    const { data, error } = await supabase
+      .from('claims')
+      .update(payload)
+      .eq('code', code)
+      .eq('status', 'reserved')
+      .select()
+      .maybeSingle();
+
+    if (!error) {
+      return data ? normalizeClaimRow(data) : null;
+    }
+
+    if (!isMissingColumnError(error)) {
+      throw error;
+    }
+
+    lastError = error;
   }
 
-  return data ? normalizeClaimRow(data) : null;
+  if (lastError) {
+    throw lastError;
+  }
+
+  return null;
 };
 

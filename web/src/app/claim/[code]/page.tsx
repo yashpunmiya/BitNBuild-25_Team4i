@@ -92,6 +92,7 @@ type BuildTransactionResponse = {
   mint: string;
   blockhash: string;
   lastValidBlockHeight: number;
+  feePayer: string;
 };
 
 type FinalizeResponse = {
@@ -104,6 +105,9 @@ const statusCopy: Record<Exclude<ClaimStatus, 'idle' | 'success'>, string> = {
   signing: 'Waiting for wallet signature…',
   finalizing: 'Finalizing on Solana…',
 };
+
+const shortenAddress = (address: string): string =>
+  address.length <= 10 ? address : `${address.slice(0, 4)}…${address.slice(-4)}`;
 
 export default function ClaimPage({ params }: { params: Promise<{ code: string }> }) {
   const [code, setCode] = useState<string>('');
@@ -124,6 +128,8 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
   const [status, setStatus] = useState<ClaimStatus>('idle');
   const [signature, setSignature] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [metadataInfo, setMetadataInfo] = useState<MetadataResponse | null>(null);
+  const [buildDetails, setBuildDetails] = useState<BuildTransactionResponse | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -230,6 +236,8 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
     setStatus('idle');
     setSignature(null);
     setError(null);
+    setMetadataInfo(null);
+    setBuildDetails(null);
     startCamera();
   };
 
@@ -252,6 +260,8 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
     }
 
     setError(null);
+    setMetadataInfo(null);
+    setBuildDetails(null);
 
     try {
       setStatus('uploading');
@@ -264,6 +274,7 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
         throw new Error('Failed to upload snapshot.');
       }
       const metadata: MetadataResponse = await metadataResponse.json();
+      setMetadataInfo(metadata);
 
       setStatus('building');
       const buildResponse = await fetch('/api/claim/build', {
@@ -278,7 +289,8 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
       if (!buildResponse.ok) {
         throw new Error('Failed to build transaction.');
       }
-      const build: BuildTransactionResponse = await buildResponse.json();
+    const build: BuildTransactionResponse = await buildResponse.json();
+    setBuildDetails(build);
 
       setStatus('signing');
       const versionedTx = VersionedTransaction.deserialize(Buffer.from(build.transaction, 'base64'));
@@ -397,6 +409,19 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
         {isBusy && status !== 'idle' && status !== 'success' && (
           <p style={{ marginTop: '1rem', opacity: 0.75 }}>{statusCopy[status]}</p>
         )}
+        {buildDetails?.feePayer && (
+          <p style={{ marginTop: '1rem', fontSize: '0.9rem', opacity: 0.85 }}>
+            Organizer fee payer:{' '}
+            <a
+              href={`https://solscan.io/account/${buildDetails.feePayer}?cluster=devnet`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: '#22d3ee' }}
+            >
+              {shortenAddress(buildDetails.feePayer)}
+            </a>
+          </p>
+        )}
         {signature && (
           <p style={{ marginTop: '1rem', fontSize: '0.9rem' }}>
             Transaction signature:{' '}
@@ -409,6 +434,46 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
               {signature}
             </a>
           </p>
+        )}
+        {metadataInfo && (
+          <div style={{ marginTop: '1.5rem', background: 'rgba(15,23,42,0.45)', borderRadius: '12px', padding: '1rem' }}>
+            <h3 style={{ marginBottom: '0.75rem', fontSize: '1.05rem' }}>Snapshot upload</h3>
+            <p style={{ fontSize: '0.9rem', marginBottom: '0.35rem' }}>
+              Metadata:{' '}
+              <a
+                href={metadataInfo.metadataUri}
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: '#22d3ee' }}
+              >
+                Open Arweave JSON
+              </a>
+            </p>
+            <p style={{ fontSize: '0.9rem', marginBottom: metadataInfo.imageUri ? '0.75rem' : 0 }}>
+              Image:{' '}
+              <a
+                href={metadataInfo.imageUri}
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: '#22d3ee' }}
+              >
+                View snapshot
+              </a>
+            </p>
+            {metadataInfo.imageUri && (
+              <Image
+                src={metadataInfo.imageUri}
+                alt="Arweave snapshot"
+                width={600}
+                height={600}
+                unoptimized
+                style={{ width: '100%', maxHeight: '280px', objectFit: 'cover', borderRadius: '10px', border: '1px solid rgba(148,163,184,0.25)' }}
+              />
+            )}
+            <p style={{ fontSize: '0.8rem', opacity: 0.65, marginTop: '0.75rem' }}>
+              Arweave links can take a minute or two to propagate. Refresh the tabs above if they initially 404.
+            </p>
+          </div>
         )}
         {error && (
           <p style={{ marginTop: '1rem', color: '#fda4af' }}>{error}</p>

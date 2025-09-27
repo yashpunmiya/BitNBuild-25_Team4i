@@ -21,6 +21,7 @@ import bs58 from 'bs58';
 import type { EventRow } from './supabase';
 import { uploadMetadata } from './storage';
 import { getCollectionAuthority, getFeePayer, getUmi } from './umi';
+import { getClaimNftName, getCollectionName } from './nft';
 
 export type CreateCollectionInput = {
   name: string;
@@ -43,11 +44,18 @@ export const createCollectionNft = async (
 
   const metadataUri = await uploadMetadata(
     {
-      name: input.name,
+      name: getCollectionName(input.name),
       symbol: 'POP',
       description: input.description,
       image: '',
-      attributes: [],
+      attributes: input.name
+        ? [
+            {
+              trait_type: 'Original Event Name',
+              value: input.name,
+            },
+          ]
+        : [],
     },
     `collection-${mint.publicKey}.json`,
   );
@@ -57,7 +65,7 @@ export const createCollectionNft = async (
     authority: collectionAuthority,
     payer: feePayer,
     updateAuthority: collectionAuthority.publicKey,
-    name: input.name,
+    name: getCollectionName(input.name),
     symbol: 'POP',
     uri: metadataUri,
     sellerFeeBasisPoints: percentAmount(0),
@@ -94,6 +102,7 @@ export type BuildClaimTransactionResult = {
   mint: string;
   blockhash: string;
   lastValidBlockHeight: number;
+  feePayer: string;
 };
 
 const createOwnerValidationInstruction = (
@@ -139,7 +148,7 @@ export const buildClaimTransaction = async (
     authority: collectionAuthority,
     payer: feePayer,
     updateAuthority: collectionAuthority.publicKey,
-    name: `${params.event.name} Proof of Presence`,
+    name: getClaimNftName(params.event.name),
     symbol: 'POP',
     uri: params.metadataUri,
     sellerFeeBasisPoints: percentAmount(0),
@@ -208,6 +217,7 @@ export const buildClaimTransaction = async (
     mint: String(mint.publicKey),
     blockhash: latestBlockhash.blockhash,
     lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+    feePayer: String(feePayer.publicKey),
   };
 };
 

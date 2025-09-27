@@ -4,6 +4,7 @@ import { ZodError, z } from 'zod';
 
 import { uploadImage, uploadMetadata } from '@/lib/storage';
 import { getClaimByCode } from '@/lib/supabase';
+import { getClaimNftName } from '@/lib/nft';
 
 const schema = z.object({
   code: z.string().min(1),
@@ -31,9 +32,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const imageUri = await uploadImage(buffer, contentType, `${payload.code}.png`);
 
+    const nftName = getClaimNftName(claim.events.name);
+
     const metadataUri = await uploadMetadata(
       {
-        name: `${claim.events.name} Proof of Presence`,
+        name: nftName,
         symbol: 'POP',
         description: claim.events.description,
         image: imageUri,
