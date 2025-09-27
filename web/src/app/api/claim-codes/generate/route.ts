@@ -3,8 +3,7 @@ import { randomUUID } from 'crypto';
 import { createClient, type PostgrestError } from '@supabase/supabase-js';
 
 import { getServerConfig } from '@/lib/env';
-
-const CLAIM_EVENT_COLUMN_CANDIDATES = ['eventId', 'eventid', 'event_id'] as const;
+import { CLAIM_EVENT_COLUMN_CANDIDATES } from '@/lib/supabase';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { QRCodeSVG } from 'qrcode.react';
 
 // Import WalletMultiButton with SSR disabled to prevent hydration mismatch
 const WalletMultiButton = dynamic(
@@ -103,6 +104,9 @@ export default function OrganizerPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [origin, setOrigin] = useState<string>(process.env.NEXT_PUBLIC_BASE_URL ?? '');
+  const [selectedQrEventId, setSelectedQrEventId] = useState('');
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
 
   // Event creation form
   const [eventName, setEventName] = useState('');
@@ -178,15 +182,50 @@ export default function OrganizerPage() {
         throw new Error(payload.error ?? 'Failed to generate claim codes');
       }
 
-  const codes = payload.codes ?? [];
-  setClaimCodes((prev) => [...prev, ...codes]);
-  setSuccess(payload.message ?? `Generated ${codes.length} claim codes`);
+      const codes = payload.codes ?? [];
+      setClaimCodes((prev) => [...prev, ...codes]);
+      setSuccess(payload.message ?? `Generated ${codes.length} claim codes`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate claim codes');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
+  const dynamicClaimUrl = useMemo(() => {
+    if (!selectedQrEventId) {
+      return '';
+    }
+
+    const base = origin || (typeof window !== 'undefined' ? window.location.origin : '');
+    if (!base) {
+      return `/claim/dynamic?event=${selectedQrEventId}`;
+    }
+
+    return `${base.replace(/\/$/, '')}/claim/dynamic?event=${encodeURIComponent(selectedQrEventId)}`;
+  }, [origin, selectedQrEventId]);
+
+  const copyDynamicLink = useCallback(async () => {
+    if (!dynamicClaimUrl) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(dynamicClaimUrl);
+      setCopyMessage('Link copied to clipboard');
+      setTimeout(() => setCopyMessage(null), 2500);
+    } catch (clipboardError) {
+      console.error('Failed to copy dynamic link', clipboardError);
+      setCopyMessage('Unable to copy link. Copy manually.');
+      setTimeout(() => setCopyMessage(null), 3000);
+    }
+  }, [dynamicClaimUrl]);
 
   return (
     <main style={containerStyle}>
@@ -302,6 +341,49 @@ export default function OrganizerPage() {
             >
               {loading ? 'Generating...' : `Generate ${numCodes} Claim Codes`}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Dynamic QR */}
+      {events.length > 0 && (
+        <div style={cardStyle}>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Dynamic Claim QR</h2>
+          <p style={{ marginBottom: '1rem', opacity: 0.8 }}>
+            Share a single QR code that automatically hands out the next available claim code for a selected
+            event. Each scan redirects visitors to the regular claim flow with a fresh reservation.
+          </p>
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <select
+              value={selectedQrEventId}
+              onChange={(e) => setSelectedQrEventId(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="">Select an event</option>
+              {events.map((event) => (
+                <option key={event.id} value={event.id}>
+                  {event.name}
+                </option>
+              ))}
+            </select>
+            {dynamicClaimUrl ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                <QRCodeSVG value={dynamicClaimUrl} size={220} includeMargin />
+                <code style={{ fontSize: '0.85rem', opacity: 0.8 }}>{dynamicClaimUrl}</code>
+                <button style={buttonStyle} onClick={copyDynamicLink}>
+                  Copy Claim Link
+                </button>
+                {copyMessage && (
+                  <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>{copyMessage}</p>
+                )}
+                <p style={{ fontSize: '0.8rem', opacity: 0.6, textAlign: 'center' }}>
+                  Reservations auto-expire after 10 minutes if visitors abandon the flow, so the QR keeps
+                  recycling codes safely.
+                </p>
+              </div>
+            ) : (
+              <p style={{ opacity: 0.7 }}>Select an event to generate the dynamic QR code.</p>
+            )}
           </div>
         </div>
       )}

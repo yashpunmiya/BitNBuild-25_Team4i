@@ -40,6 +40,15 @@ let adminClient: SupabaseClient | undefined;
 
 type SupabaseRow = Record<string, unknown>;
 
+export const CLAIM_EVENT_COLUMN_CANDIDATES = ['eventId', 'eventid', 'event_id'] as const;
+const CLAIM_EVENT_COLUMN_LIST = [...CLAIM_EVENT_COLUMN_CANDIDATES];
+const CLAIM_UPDATED_AT_COLUMN_CANDIDATES = ['updatedAt', 'updatedat', 'updated_at'] as const;
+const CLAIM_UPDATED_AT_COLUMN_LIST = [...CLAIM_UPDATED_AT_COLUMN_CANDIDATES];
+const CLAIM_CREATED_AT_COLUMN_CANDIDATES = ['createdAt', 'createdat', 'created_at'] as const;
+const CLAIM_CREATED_AT_COLUMN_LIST = [...CLAIM_CREATED_AT_COLUMN_CANDIDATES];
+
+const CLAIM_RESERVATION_STATUSES: ClaimStatus[] = ['unused', 'reserved'];
+
 const pickValue = (row: SupabaseRow, keys: string[]): unknown => {
   for (const key of keys) {
     if (key in row) {
@@ -56,7 +65,7 @@ const isMissingColumnError = (error: unknown): boolean => {
   }
 
   const code = (error as { code?: string }).code;
-  return code === 'PGRST204';
+  return code === 'PGRST204' || code === '42703';
 };
 
 const getString = (value: unknown): string => {
@@ -86,13 +95,13 @@ const normalizeEventRow = (row: SupabaseRow): EventRow => ({
 
 const normalizeClaimRow = (row: SupabaseRow): ClaimRow => ({
   id: getString(row.id),
-  eventId: getString(pickValue(row, ['eventId', 'eventid', 'event_id'])),
+  eventId: getString(pickValue(row, CLAIM_EVENT_COLUMN_LIST)),
   code: getString(row.code),
   status: (row.status as ClaimStatus) ?? 'unused',
   wallet: getOptionalString(pickValue(row, ['wallet'])),
   txSig: getOptionalString(pickValue(row, CLAIM_TX_SIGNATURE_COLUMNS)),
-  createdAt: getString(pickValue(row, ['createdAt', 'createdat'])),
-  updatedAt: getString(pickValue(row, ['updatedAt', 'updatedat'])),
+  createdAt: getString(pickValue(row, CLAIM_CREATED_AT_COLUMN_LIST)),
+  updatedAt: getString(pickValue(row, CLAIM_UPDATED_AT_COLUMN_LIST)),
 });
 
 const getSupabaseAdmin = (): SupabaseClient => {
@@ -163,7 +172,8 @@ export const reserveClaim = async (code: string, wallet: string): Promise<ClaimR
     .from('claims')
     .update({ status: 'reserved', wallet })
     .eq('code', code)
-    .eq('status', 'unused')
+    .in('status', CLAIM_RESERVATION_STATUSES)
+    .is('wallet', null)
     .select()
     .maybeSingle();
 
@@ -216,6 +226,128 @@ export const finalizeClaim = async (code: string, txSig: string): Promise<ClaimR
 
   if (lastError) {
     throw lastError;
+  }
+
+  return null;
+};
+
+const releaseStaleReservationsForColumn = async (
+  eventColumn: string,
+  updatedColumn: string,
+  eventId: string,
+  cutoffIso: string,
+): Promise<void> => {
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase
+    .from('claims')
+    .update({ status: 'unused', wallet: null })
+    .eq(eventColumn, eventId)
+    .eq('status', 'reserved')
+    .lt(updatedColumn, cutoffIso);
+
+  if (error && !isMissingColumnError(error)) {
+    throw error;
+  }
+};
+
+const reserveNextClaimForColumn = async (
+  eventColumn: string,
+  createdColumn: string,
+  eventId: string,
+): Promise<ClaimRow | null> => {
+  const supabase = getSupabaseAdmin();
+  const selectColumns = ['id', 'code', 'status', 'wallet', eventColumn, createdColumn]
+    .filter(Boolean)
+    .join(', ');
+
+  const { data: candidates, error: selectError } = await supabase
+    .from('claims')
+    .select(selectColumns)
+    .eq(eventColumn, eventId)
+    .eq('status', 'unused')
+    .is('wallet', null)
+    .order(createdColumn, { ascending: true })
+    .limit(10);
+
+  if (selectError) {
+    if (isMissingColumnError(selectError)) {
+      return null;
+    }
+    throw selectError;
+  }
+
+  if (!candidates || candidates.length === 0) {
+    return null;
+  }
+
+  const candidateRows = candidates as SupabaseRow[];
+
+  for (const candidate of candidateRows) {
+    const candidateId = getString(candidate.id);
+
+    if (!candidateId) {
+      continue;
+    }
+
+    const { data: reserved, error: reserveError } = await supabase
+      .from('claims')
+      .update({ status: 'reserved', wallet: null })
+      .eq('id', candidateId)
+      .eq(eventColumn, eventId)
+      .eq('status', 'unused')
+      .is('wallet', null)
+      .select()
+      .maybeSingle();
+
+    if (reserveError) {
+      if (isMissingColumnError(reserveError)) {
+        return null;
+      }
+
+      // If another request claimed this code first, try the next candidate.
+      if ((reserveError as { code?: string }).code === 'PGRST116') {
+        continue;
+      }
+
+      throw reserveError;
+    }
+
+    if (reserved) {
+      return normalizeClaimRow(reserved);
+    }
+  }
+
+  return null;
+};
+
+export const releaseStaleReservations = async (
+  eventId: string,
+  ttlSeconds: number,
+): Promise<void> => {
+  const cutoffIso = new Date(Date.now() - ttlSeconds * 1000).toISOString();
+
+  await Promise.all(
+    CLAIM_EVENT_COLUMN_LIST.flatMap((eventColumn) =>
+      CLAIM_UPDATED_AT_COLUMN_LIST.map((updatedColumn) =>
+        releaseStaleReservationsForColumn(eventColumn, updatedColumn, eventId, cutoffIso),
+      ),
+    ),
+  );
+};
+
+export const allocateClaimCode = async (
+  eventId: string,
+  ttlSeconds: number,
+): Promise<ClaimRow | null> => {
+  await releaseStaleReservations(eventId, ttlSeconds);
+
+  for (const eventColumn of CLAIM_EVENT_COLUMN_LIST) {
+    for (const createdColumn of CLAIM_CREATED_AT_COLUMN_LIST) {
+      const claim = await reserveNextClaimForColumn(eventColumn, createdColumn, eventId);
+      if (claim) {
+        return claim;
+      }
+    }
   }
 
   return null;

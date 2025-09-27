@@ -25,7 +25,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Claim code not found' }, { status: 404 });
     }
 
-    if (claim.status !== 'unused') {
+    const claimAvailable =
+      claim.status === 'unused' || (claim.status === 'reserved' && (claim.wallet == null || claim.wallet === ''));
+
+    if (!claimAvailable) {
       return NextResponse.json({ error: 'Claim code not available' }, { status: 409 });
     }
 
