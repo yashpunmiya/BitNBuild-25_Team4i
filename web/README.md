@@ -10,6 +10,7 @@ A Next.js application for minting Proof of Presence NFTs on Solana. Visitors sca
 - Solana Wallet Adapter UI for in-browser signing
 - Versioned transactions with organizer fee payer signature on finalize
 - Camera capture with live preview and retake flow
+- Public verification portal for claim codes, wallets, or transaction signatures
 
 ## Prerequisites
 
@@ -84,6 +85,7 @@ Visit `http://localhost:3000` for the landing page, and `http://localhost:3000/c
 | POST   | `/api/claim/build`        | Reserve claim code and return partially signed versioned tx |
 | POST   | `/api/claim/finalize`     | Add fee payer signature, broadcast, and mark claim as claimed |
 | GET    | `/api/claim/[code]`       | Lookup claim status and related event |
+| POST   | `/api/verify`             | Verify minted proofs by claim code, wallet address, or transaction signature |
 
 ## Client flow
 

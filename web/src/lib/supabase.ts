@@ -90,6 +90,9 @@ const mapToCanonicalFrameColumns = (columns: string[]): string[] => {
   return [...canonical];
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
 const pickValue = (row: SupabaseRow, keys: string[]): unknown => {
   for (const key of keys) {
     if (key in row) {
@@ -146,6 +149,19 @@ const normalizeClaimRow = (row: SupabaseRow): ClaimRow => ({
   createdAt: getString(pickValue(row, CLAIM_CREATED_AT_COLUMN_LIST)),
   updatedAt: getString(pickValue(row, CLAIM_UPDATED_AT_COLUMN_LIST)),
 });
+
+const buildClaimWithEvent = (row: SupabaseRow): ClaimWithEvent | null => {
+  const eventData = row.events;
+  if (!isRecord(eventData)) {
+    return null;
+  }
+
+  const claim = normalizeClaimRow(row);
+  return {
+    ...claim,
+    events: normalizeEventRow(eventData),
+  };
+};
 
 const getSupabaseAdmin = (): SupabaseClient => {
   if (!adminClient) {
@@ -324,6 +340,65 @@ export const getClaimByCode = async (code: string): Promise<ClaimWithEvent | nul
     ...claim,
     events: normalizeEventRow(data.events),
   };
+};
+
+export const getClaimByTxSignature = async (
+  signature: string,
+): Promise<ClaimWithEvent | null> => {
+  const supabase = getSupabaseAdmin();
+
+  for (const column of CLAIM_TX_SIGNATURE_COLUMNS) {
+    const { data, error } = await supabase
+      .from('claims')
+      .select('*, events(*)')
+      .eq(column, signature)
+      .maybeSingle();
+
+    if (error) {
+      if (isMissingColumnError(error)) {
+        continue;
+      }
+      throw error;
+    }
+
+    if (data) {
+      const claim = buildClaimWithEvent(data as SupabaseRow);
+      if (claim) {
+        return claim;
+      }
+    }
+  }
+
+  return null;
+};
+
+export const listClaimsByWallet = async (wallet: string): Promise<ClaimWithEvent[]> => {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from('claims')
+    .select('*, events(*)')
+    .eq('wallet', wallet)
+    .eq('status', 'claimed')
+    .limit(200);
+
+  if (error) {
+    if (isMissingColumnError(error)) {
+      return [];
+    }
+    throw error;
+  }
+
+  const rows = (data as SupabaseRow[]) ?? [];
+  const claims: ClaimWithEvent[] = [];
+
+  for (const row of rows) {
+    const claim = buildClaimWithEvent(row);
+    if (claim) {
+      claims.push(claim);
+    }
+  }
+
+  return claims;
 };
 
 export const reserveClaim = async (code: string, wallet: string): Promise<ClaimRow | null> => {

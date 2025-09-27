@@ -81,11 +81,22 @@ export default function HomePage() {
               📸 Try Demo Claim
             </Link>
           </div>
+
+          <div style={{ marginTop: '2rem' }}>
+            <h3 style={{ marginBottom: '0.75rem', fontSize: '1.2rem' }}>For Verifiers</h3>
+            <p style={{ fontSize: '0.9rem', opacity: 0.7, marginBottom: '1rem' }}>
+              Confirm that a Proof of Presence NFT was minted under the correct collection using a
+              claim code, wallet, or transaction signature.
+            </p>
+            <Link href="/verify" style={secondaryButtonStyle}>
+              ✅ Verify a Proof
+            </Link>
+          </div>
         </div>
 
         <div style={{ marginTop: '2rem', padding: '1rem', background: 'rgba(34, 211, 238, 0.1)', borderRadius: '8px', fontSize: '0.9rem' }}>
           <p style={{ margin: 0, opacity: 0.8 }}>
-            <strong>Complete Flow:</strong> Create Event → Generate Claim Codes → Visitors Scan → Capture Photo → Mint NFT
+            <strong>Complete Flow:</strong> Create Event → Generate Claim Codes → Visitors Scan → Capture Photo → Mint NFT → Verify Proof
           </p>
         </div>
       </div>

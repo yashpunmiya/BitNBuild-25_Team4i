@@ -3,6 +3,7 @@
 import { Buffer } from 'buffer';
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { VersionedTransaction } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -135,6 +136,26 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const isBusy = useMemo(() => status !== 'idle' && status !== 'success', [status]);
+
+  const verifyLink = useMemo(() => {
+    if (!signature) {
+      return null;
+    }
+
+    const params = new URLSearchParams();
+
+    if (claim?.code) {
+      params.set('code', claim.code);
+    }
+
+    params.set('tx', signature);
+
+    if (claim?.wallet) {
+      params.set('wallet', claim.wallet);
+    }
+
+    return `/verify?${params.toString()}`;
+  }, [claim, signature]);
 
   useEffect(() => {
     if (!code) return;
@@ -426,13 +447,20 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
           <p style={{ marginTop: '1rem', fontSize: '0.9rem' }}>
             Transaction signature:{' '}
             <a
-              href={`https://solscan.io/tx/${signature}`}
+              href={`https://solscan.io/tx/${signature}?cluster=devnet`}
               target="_blank"
               rel="noreferrer"
               style={{ color: '#22d3ee' }}
             >
               {signature}
             </a>
+          </p>
+        )}
+        {verifyLink && (
+          <p style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>
+            <Link href={verifyLink} style={{ color: '#22d3ee', textDecoration: 'underline' }}>
+              Verify this proof on the public portal ↗
+            </Link>
           </p>
         )}
         {metadataInfo && (
