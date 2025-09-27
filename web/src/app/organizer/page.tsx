@@ -5,32 +5,19 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
 
+import styles from './organizer.module.css';
 import type { FrameConfig } from '@/lib/frame';
 
-// Import WalletMultiButton with SSR disabled to prevent hydration mismatch
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletMultiButton),
-  { 
+  {
     ssr: false,
     loading: () => (
-      <button 
-        style={{
-          background: 'linear-gradient(135deg, #22d3ee, #0ea5e9)',
-          border: 'none',
-          borderRadius: '8px',
-          color: 'white',
-          padding: '0.5rem 1rem',
-          fontSize: '0.9rem',
-          fontWeight: '600',
-          cursor: 'not-allowed',
-          opacity: 0.7,
-        }}
-        disabled
-      >
-        Loading Wallet...
+      <button className="ui-button ui-button-primary" disabled>
+        Loading wallet…
       </button>
-    )
-  }
+    ),
+  },
 );
 
 type Event = {
@@ -70,53 +57,6 @@ type FeePayerBalance = {
 
 const FALLBACK_FEE_PAYER_ADDRESS = '4Eoeq4SPSevhrGokGiVdpvooDZ474GX4gTmAis5YUqWC';
 
-const containerStyle: React.CSSProperties = {
-  maxWidth: '1000px',
-  margin: '0 auto',
-  padding: '2rem',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '2rem',
-};
-
-const cardStyle: React.CSSProperties = {
-  background: 'rgba(15, 23, 42, 0.6)',
-  border: '1px solid rgba(148, 163, 184, 0.2)',
-  borderRadius: '16px',
-  padding: '1.5rem',
-  boxShadow: '0 18px 65px rgba(15, 23, 42, 0.45)',
-};
-
-const buttonStyle: React.CSSProperties = {
-  background: 'linear-gradient(135deg, #22d3ee, #0ea5e9)',
-  border: 'none',
-  borderRadius: '8px',
-  color: 'white',
-  padding: '0.75rem 1.5rem',
-  fontSize: '0.9rem',
-  fontWeight: '600',
-  cursor: 'pointer',
-  transition: 'all 0.2s',
-};
-
-const outlineButtonStyle: React.CSSProperties = {
-  ...buttonStyle,
-  background: 'transparent',
-  border: '1px solid rgba(56, 189, 248, 0.45)',
-  color: '#38bdf8',
-};
-
-const inputStyle: React.CSSProperties = {
-  background: 'rgba(15, 23, 42, 0.8)',
-  border: '1px solid rgba(148, 163, 184, 0.3)',
-  borderRadius: '8px',
-  color: '#e2e8f0',
-  padding: '0.75rem',
-  fontSize: '0.9rem',
-  width: '100%',
-  marginBottom: '1rem',
-};
-
 export default function OrganizerPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [claimCodes, setClaimCodes] = useState<ClaimCode[]>([]);
@@ -127,16 +67,14 @@ export default function OrganizerPage() {
   const [selectedQrEventId, setSelectedQrEventId] = useState('');
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
 
-  // Fee payer funding state
   const [feePayerAddress, setFeePayerAddress] = useState<string>(FALLBACK_FEE_PAYER_ADDRESS);
   const [feePayerBalance, setFeePayerBalance] = useState<FeePayerBalance | null>(null);
-  const [feePayerLoading, setFeePayerLoading] = useState<boolean>(false);
-  const [funding, setFunding] = useState<boolean>(false);
+  const [feePayerLoading, setFeePayerLoading] = useState(false);
+  const [funding, setFunding] = useState(false);
   const [fundingMessage, setFundingMessage] = useState<string | null>(null);
   const [fundingError, setFundingError] = useState<string | null>(null);
   const [copyAddressMessage, setCopyAddressMessage] = useState<string | null>(null);
 
-  // Frame management state
   const [selectedFrameEventId, setSelectedFrameEventId] = useState('');
   const [frameConfigInputs, setFrameConfigInputs] = useState({
     x: 320,
@@ -159,17 +97,17 @@ export default function OrganizerPage() {
     [events, selectedFrameEventId],
   );
 
-  // Event creation form
   const [eventName, setEventName] = useState('');
   const [eventDescription, setEventDescription] = useState('');
 
-  // Claim code generation
   const [selectedEventId, setSelectedEventId] = useState('');
   const [numCodes, setNumCodes] = useState(10);
 
   const createEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!eventName || !eventDescription) return;
+    if (!eventName || !eventDescription) {
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -207,7 +145,9 @@ export default function OrganizerPage() {
   };
 
   const generateClaimCodes = async () => {
-    if (!selectedEventId || numCodes < 1) return;
+    if (!selectedEventId || numCodes < 1) {
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -243,20 +183,19 @@ export default function OrganizerPage() {
     }
   };
 
-  const formatSol = useCallback((value: number): string => {
+  const formatSol = useCallback((value: number) => {
     return value.toLocaleString(undefined, {
       minimumFractionDigits: 0,
       maximumFractionDigits: 4,
     });
   }, []);
 
-  const shortenValue = useCallback((value: string, visible = 4): string => {
+  const shortenValue = useCallback((value: string, visible = 4) => {
     if (!value) {
       return '';
     }
-    return value.length <= visible * 2
-      ? value
-      : `${value.slice(0, visible)}…${value.slice(-visible)}`;
+
+    return value.length <= visible * 2 ? value : `${value.slice(0, visible)}…${value.slice(-visible)}`;
   }, []);
 
   const fetchFeePayerBalance = useCallback(async () => {
@@ -290,7 +229,7 @@ export default function OrganizerPage() {
     } finally {
       setFeePayerLoading(false);
     }
-  }, [setFeePayerAddress, setFeePayerBalance, setFundingError]);
+  }, []);
 
   const handleCopyFeePayerAddress = useCallback(async () => {
     if (!feePayerAddress) {
@@ -433,7 +372,7 @@ export default function OrganizerPage() {
     } finally {
       setFrameLoading(false);
     }
-  }, [frameConfigInputs, frameUploadPreview, selectedFrameEventId, setEvents]);
+  }, [frameConfigInputs, frameUploadPreview, selectedFrameEventId]);
 
   const handleFrameImageLoaded = useCallback((target: HTMLImageElement) => {
     frameImageRef.current = target;
@@ -549,468 +488,423 @@ export default function OrganizerPage() {
     }
   }, [dynamicClaimUrl]);
 
+  const getStatusClass = useCallback((status: ClaimCode['status']) => {
+    if (status === 'unused') return styles.statusUnused;
+    if (status === 'reserved') return styles.statusReserved;
+    return styles.statusClaimed;
+  }, []);
+
   return (
-    <main style={containerStyle}>
-      <div style={cardStyle}>
-        <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Organizer Dashboard</h1>
-        <p style={{ marginBottom: '1.5rem', opacity: 0.8 }}>
-          Create events, mint collection NFTs, and generate claim codes for visitors.
-        </p>
-        <WalletMultiButton />
-      </div>
+    <main className="app-shell">
+      <div className={styles.page}>
+        <section className="surface-card surface-card--accent">
+          <div className={styles.sectionIntro}>
+            <span className="ui-pill">Organizer HQ</span>
+            <h1 className={styles.sectionTitle}>Organizer Dashboard</h1>
+            <p className={styles.sectionSubtitle}>
+              Create events, mint collection NFTs, and generate claim codes for visitors.
+            </p>
+          </div>
+          <div className={styles.actionRow}>
+            <WalletMultiButton />
+          </div>
+        </section>
 
-      <div style={cardStyle}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>Fee Payer Treasury</h2>
-        <p style={{ opacity: 0.75, marginBottom: '1rem' }}>
-          All attendee mints use a shared fee payer wallet. Fund it with devnet SOL so visitors can mint
-          without paying gas.
-        </p>
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.85rem', opacity: 0.7 }}>Fee payer address</span>
-            <code
-              style={{
-                background: 'rgba(15,23,42,0.7)',
-                borderRadius: '8px',
-                padding: '0.5rem 0.75rem',
-                fontSize: '0.85rem',
-                letterSpacing: '0.02em',
-              }}
-            >
-              {feePayerAddress}
-            </code>
-            <button
-              style={outlineButtonStyle}
-              onClick={handleCopyFeePayerAddress}
-              type="button"
-            >
-              Copy address
-            </button>
-            {copyAddressMessage && (
-              <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>{copyAddressMessage}</span>
-            )}
+        <section className="surface-card">
+          <div className={styles.sectionIntro}>
+            <h2 className={styles.sectionTitle}>Fee Payer Treasury</h2>
+            <p className={styles.sectionSubtitle}>
+              All attendee mints use a shared fee payer wallet. Fund it with devnet SOL so visitors can mint
+              without paying gas.
+            </p>
           </div>
 
-          <div style={{ fontSize: '0.95rem', opacity: 0.85 }}>
-            Current balance:{' '}
-            {feePayerLoading
-              ? 'Loading…'
-              : feePayerBalance
-                ? `${formatSol(feePayerBalance.sol)} SOL (${feePayerBalance.lamports.toLocaleString()} lamports)`
-                : 'Unavailable'}
-          </div>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-            <button
-              style={buttonStyle}
-              type="button"
-              onClick={() => {
-                void fetchFeePayerBalance();
-              }}
-              disabled={feePayerLoading || funding}
-            >
-              {feePayerLoading ? 'Refreshing…' : 'Refresh balance'}
-            </button>
-            <button
-              style={buttonStyle}
-              type="button"
-              onClick={handleRequestAirdrop}
-              disabled={funding || feePayerLoading}
-            >
-              {funding ? 'Requesting devnet SOL…' : 'Request 1 SOL devnet airdrop'}
-            </button>
-            <a
-              href={`https://faucet.solana.com/?cluster=devnet&address=${feePayerAddress}`}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                ...outlineButtonStyle,
-                display: 'inline-flex',
-                alignItems: 'center',
-                textDecoration: 'none',
-              }}
-            >
-              Open Solana faucet →
-            </a>
-          </div>
-
-          {fundingError && (
-            <p style={{ color: '#fda4af', margin: 0 }}>{fundingError}</p>
-          )}
-
-          {fundingMessage && (
-            <p style={{ color: '#34d399', margin: 0 }}>{fundingMessage}</p>
-          )}
-        </div>
-      </div>
-
-      {error && (
-        <div style={{ ...cardStyle, borderColor: '#f87171', background: 'rgba(239, 68, 68, 0.1)' }}>
-          <p style={{ color: '#f87171', margin: 0 }}>{error}</p>
-        </div>
-      )}
-
-      {success && (
-        <div style={{ ...cardStyle, borderColor: '#34d399', background: 'rgba(52, 211, 153, 0.1)' }}>
-          <p style={{ color: '#34d399', margin: 0 }}>{success}</p>
-        </div>
-      )}
-
-      {/* Event Creation */}
-      <div style={cardStyle}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Create New Event</h2>
-        <form onSubmit={createEvent}>
-          <input
-            type="text"
-            placeholder="Event Name (e.g., 'Conference 2025')"
-            value={eventName}
-            onChange={(e) => setEventName(e.target.value)}
-            style={inputStyle}
-            required
-          />
-          <textarea
-            placeholder="Event Description"
-            value={eventDescription}
-            onChange={(e) => setEventDescription(e.target.value)}
-            style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }}
-            required
-          />
-          <button
-            type="submit"
-            style={buttonStyle}
-            disabled={loading || !eventName || !eventDescription}
-          >
-            {loading ? 'Creating Event...' : 'Create Event & Mint Collection NFT'}
-          </button>
-        </form>
-      </div>
-
-      {/* Events List */}
-      <div style={cardStyle}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Your Events</h2>
-        {events.length === 0 ? (
-          <p style={{ opacity: 0.7 }}>No events created yet.</p>
-        ) : (
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            {events.map((event) => (
-              <div
-                key={event.id}
-                style={{
-                  border: '1px solid rgba(148, 163, 184, 0.2)',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                }}
+          <div className={styles.sectionGroup}>
+            <div className={styles.labelsRow}>
+              <span className={styles.subtleNote}>Fee payer address</span>
+              <code className={styles.addressChip}>{feePayerAddress}</code>
+              <button
+                className="ui-button ui-button-secondary"
+                onClick={handleCopyFeePayerAddress}
+                type="button"
               >
-                <h3 style={{ margin: '0 0 0.5rem 0' }}>{event.name}</h3>
-                <p style={{ margin: '0 0 0.5rem 0', opacity: 0.8 }}>{event.description}</p>
-                <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>
-                  Collection: {event.collectionMint}
-                </p>
-                <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>
-                  Created: {new Date(event.createdAt).toLocaleDateString()}
-                </p>
+                Copy address
+              </button>
+              {copyAddressMessage && <span className={styles.subtleNote}>{copyAddressMessage}</span>}
+            </div>
+
+            <div className="ui-metric-grid">
+              <div className="ui-metric">
+                <span className="ui-metric__label">Current balance</span>
+                <span className="ui-metric__value">
+                  {feePayerLoading
+                    ? 'Loading…'
+                    : feePayerBalance
+                      ? `${formatSol(feePayerBalance.sol)} SOL`
+                      : 'Unavailable'}
+                </span>
+                {feePayerBalance && (
+                  <span className={styles.subtleNote}>
+                    {feePayerBalance.lamports.toLocaleString()} lamports
+                  </span>
+                )}
               </div>
-            ))}
+              <div className="ui-metric">
+                <span className="ui-metric__label">Events live</span>
+                <span className="ui-metric__value">{events.length}</span>
+              </div>
+            </div>
+
+            <div className={styles.actionRow}>
+              <button
+                className="ui-button ui-button-secondary"
+                type="button"
+                onClick={() => {
+                  void fetchFeePayerBalance();
+                }}
+                disabled={feePayerLoading || funding}
+              >
+                {feePayerLoading ? 'Refreshing…' : 'Refresh balance'}
+              </button>
+              <button
+                className="ui-button ui-button-primary"
+                type="button"
+                onClick={handleRequestAirdrop}
+                disabled={funding || feePayerLoading}
+              >
+                {funding ? 'Requesting devnet SOL…' : 'Request 1 SOL devnet airdrop'}
+              </button>
+              <a
+                href={`https://faucet.solana.com/?cluster=devnet&address=${feePayerAddress}`}
+                target="_blank"
+                rel="noreferrer"
+                className="ui-button ui-button-ghost"
+              >
+                Open Solana faucet →
+              </a>
+            </div>
+
+            {fundingError && <div className="ui-alert ui-alert--critical">{fundingError}</div>}
+            {fundingMessage && <div className="ui-alert">{fundingMessage}</div>}
           </div>
+        </section>
+
+        {error && (
+          <section className="surface-card surface-card--muted">
+            <div className="ui-alert ui-alert--critical">{error}</div>
+          </section>
+        )}
+
+        {success && (
+          <section className="surface-card surface-card--muted">
+            <div className="ui-alert">{success}</div>
+          </section>
+        )}
+
+        <section className="surface-card surface-card--accent">
+          <div className={styles.sectionIntro}>
+            <h2 className={styles.sectionTitle}>Create New Event</h2>
+          </div>
+          <form onSubmit={createEvent} className={styles.formGrid}>
+            <label className="ui-label" htmlFor="event-name">
+              Event name
+              <input
+                id="event-name"
+                type="text"
+                placeholder="Event Name (e.g., 'Conference 2025')"
+                value={eventName}
+                onChange={(e) => setEventName(e.target.value)}
+                className="ui-input"
+                required
+              />
+            </label>
+            <label className="ui-label" htmlFor="event-description">
+              Event description
+              <textarea
+                id="event-description"
+                placeholder="Event Description"
+                value={eventDescription}
+                onChange={(e) => setEventDescription(e.target.value)}
+                className="ui-textarea"
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              className="ui-button ui-button-primary"
+              disabled={loading || !eventName || !eventDescription}
+            >
+              {loading ? 'Creating event…' : 'Create event & mint collection NFT'}
+            </button>
+          </form>
+        </section>
+
+        <section className="surface-card">
+          <div className={styles.sectionIntro}>
+            <h2 className={styles.sectionTitle}>Your Events</h2>
+            <p className={styles.sectionSubtitle}>
+              Keep tabs on the collections you’ve launched for on-site minting.
+            </p>
+          </div>
+          {events.length === 0 ? (
+            <p className={styles.subtleNote}>No events created yet.</p>
+          ) : (
+            <div className={styles.sectionGroup}>
+              {events.map((event) => (
+                <div key={event.id} className={styles.eventCard}>
+                  <h3 className={styles.eventName}>{event.name}</h3>
+                  <p className={styles.eventDescription}>{event.description}</p>
+                  <div className={styles.eventMeta}>
+                    <span>Collection: {event.collectionMint}</span>
+                    <span>Created: {new Date(event.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {events.length > 0 && (
+          <section className="surface-card surface-card--accent">
+            <div className={styles.sectionIntro}>
+              <h2 className={styles.sectionTitle}>Generate Claim Codes</h2>
+              <p className={styles.sectionSubtitle}>
+                Create batches of one-time claim codes to distribute at your event check-in.
+              </p>
+            </div>
+            <div className={styles.sectionGroup}>
+              <select
+                value={selectedEventId}
+                onChange={(e) => setSelectedEventId(e.target.value)}
+                className="ui-input"
+              >
+                <option value="">Select an event</option>
+                {events.map((event) => (
+                  <option key={event.id} value={event.id}>
+                    {event.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                placeholder="Number of claim codes"
+                value={numCodes}
+                onChange={(e) => setNumCodes(Number.parseInt(e.target.value, 10) || 1)}
+                min="1"
+                max="100"
+                className="ui-input"
+              />
+              <button
+                onClick={generateClaimCodes}
+                className="ui-button ui-button-primary"
+                disabled={loading || !selectedEventId}
+                type="button"
+              >
+                {loading ? 'Generating…' : `Generate ${numCodes} claim codes`}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {events.length > 0 && (
+          <section className="surface-card">
+            <div className={styles.sectionIntro}>
+              <h2 className={styles.sectionTitle}>Dynamic Claim QR</h2>
+              <p className={styles.sectionSubtitle}>
+                Share a single QR code that automatically hands out the next available claim code for a selected
+                event.
+              </p>
+            </div>
+            <div className={styles.qrPanel}>
+              <select
+                value={selectedQrEventId}
+                onChange={(e) => setSelectedQrEventId(e.target.value)}
+                className="ui-input"
+              >
+                <option value="">Select an event</option>
+                {events.map((event) => (
+                  <option key={event.id} value={event.id}>
+                    {event.name}
+                  </option>
+                ))}
+              </select>
+              {dynamicClaimUrl ? (
+                <>
+                  <div className={styles.qrCanvas}>
+                    <QRCodeSVG value={dynamicClaimUrl} size={220} includeMargin />
+                  </div>
+                  <p className={styles.qrLink}>{dynamicClaimUrl}</p>
+                  <button className="ui-button ui-button-secondary" onClick={copyDynamicLink}>
+                    Copy claim link
+                  </button>
+                  {copyMessage && <p className={styles.subtleNote}>{copyMessage}</p>}
+                  <p className={styles.subtleNote}>
+                    Reservations auto-expire after 10 minutes if visitors abandon the flow, so the QR keeps
+                    recycling codes safely.
+                  </p>
+                </>
+              ) : (
+                <p className={styles.subtleNote}>Select an event to generate the dynamic QR code.</p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {events.length > 0 && (
+          <section className="surface-card surface-card--accent">
+            <div className={styles.sectionIntro}>
+              <h2 className={styles.sectionTitle}>Event Frame Template</h2>
+              <p className={styles.sectionSubtitle}>
+                Upload a base frame artwork and describe where the visitor selfie should be placed. During minting
+                we’ll composite their photo onto this template, turning each NFT into a branded badge.
+              </p>
+            </div>
+            <div className={styles.frameEditor}>
+              <select
+                value={selectedFrameEventId}
+                onChange={(event) => setSelectedFrameEventId(event.target.value)}
+                className="ui-input"
+              >
+                <option value="">Select an event</option>
+                {events.map((event) => (
+                  <option key={event.id} value={event.id}>
+                    {event.name}
+                  </option>
+                ))}
+              </select>
+
+              {selectedFrameEventId ? (
+                <>
+                  <div className={styles.formGrid}>
+                    <label className="ui-label" htmlFor="frame-upload-input">
+                      Frame artwork (.png or .jpg)
+                      <input
+                        id="frame-upload-input"
+                        type="file"
+                        accept="image/png,image/jpeg"
+                        onChange={handleFrameFileChange}
+                        className="ui-input"
+                      />
+                    </label>
+                    <p className={styles.subtleNote}>
+                      Tip: match these coordinates to the template’s pixel dimensions for precise placement.
+                    </p>
+                  </div>
+
+                  <div className={styles.formGridColumns}>
+                    {([
+                      ['x', 'Selfie X (px)'],
+                      ['y', 'Selfie Y (px)'],
+                      ['width', 'Selfie Width (px)'],
+                      ['height', 'Selfie Height (px)'],
+                      ['borderRadius', 'Corner Radius (px)'],
+                    ] as const).map(([field, label]) => (
+                      <label key={field} className="ui-label" htmlFor={`frame-${field}`}>
+                        {label}
+                        <input
+                          id={`frame-${field}`}
+                          type="number"
+                          value={frameConfigInputs[field]}
+                          onChange={(event) =>
+                            handleFrameInputChange(field, Number.parseFloat(event.target.value))
+                          }
+                          className="ui-input"
+                        />
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className={styles.framePreview}>
+                    <p className={styles.subtleNote}>Live preview</p>
+                    <div className={styles.framePreviewCanvas}>
+                      {frameTemplatePreview ? (
+                        <>
+                          <Image
+                            ref={frameImageRef}
+                            src={frameTemplatePreview}
+                            alt="Frame template preview"
+                            width={framePreviewNaturalSize?.width ?? 1200}
+                            height={framePreviewNaturalSize?.height ?? 1200}
+                            className={styles.frameImage}
+                            onLoadingComplete={handleFrameImageLoaded}
+                            unoptimized
+                          />
+                          {frameOverlayStyle && <div style={frameOverlayStyle} />}
+                        </>
+                      ) : (
+                        <div className={styles.framePlaceholder}>
+                          Upload a frame artwork to preview it here.
+                        </div>
+                      )}
+                    </div>
+                    <p className={styles.subtleNote}>
+                      The dotted rectangle shows where the visitor photo will land after resizing.
+                    </p>
+                  </div>
+
+                  <div className={styles.actionRow}>
+                    <button
+                      type="button"
+                      className="ui-button ui-button-primary"
+                      onClick={() => {
+                        void handleFrameSubmit();
+                      }}
+                      disabled={frameLoading}
+                    >
+                      {frameLoading ? 'Saving frame…' : 'Save frame template'}
+                    </button>
+                    <button
+                      type="button"
+                      className="ui-button ui-button-ghost"
+                      onClick={() => {
+                        setFrameUploadPreview(null);
+                        setFrameTemplatePreview(selectedFrameEvent?.frameTemplateUrl ?? null);
+                      }}
+                      disabled={frameLoading}
+                    >
+                      Reset upload
+                    </button>
+                  </div>
+
+                  {frameError && <div className="ui-alert ui-alert--critical">{frameError}</div>}
+                  {frameMessage && <div className="ui-alert">{frameMessage}</div>}
+                </>
+              ) : (
+                <p className={styles.subtleNote}>Select an event to configure its frame template.</p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {claimCodes.length > 0 && (
+          <section className="surface-card">
+            <div className={styles.sectionIntro}>
+              <h2 className={styles.sectionTitle}>Claim Codes</h2>
+              <p className={styles.sectionSubtitle}>
+                Track issued codes and test the claim flow directly from here.
+              </p>
+            </div>
+            <div className={styles.codeList}>
+              {claimCodes.map((code) => (
+                <div key={code.id} className={styles.codeItem}>
+                  <span className={styles.codeValue}>{code.code}</span>
+                  <div className={styles.codeActions}>
+                    <span className={`${styles.codeStatus} ${getStatusClass(code.status)}`}>{code.status}</span>
+                    <a
+                      href={`/claim/${code.code}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.codeLink}
+                    >
+                      Test →
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
       </div>
-
-      {/* Claim Code Generation */}
-      {events.length > 0 && (
-        <div style={cardStyle}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Generate Claim Codes</h2>
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            <select
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              style={inputStyle}
-            >
-              <option value="">Select an event</option>
-              {events.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.name}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              placeholder="Number of claim codes"
-              value={numCodes}
-              onChange={(e) => setNumCodes(parseInt(e.target.value) || 1)}
-              min="1"
-              max="100"
-              style={inputStyle}
-            />
-            <button
-              onClick={generateClaimCodes}
-              style={buttonStyle}
-              disabled={loading || !selectedEventId}
-            >
-              {loading ? 'Generating...' : `Generate ${numCodes} Claim Codes`}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Dynamic QR */}
-      {events.length > 0 && (
-        <div style={cardStyle}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Dynamic Claim QR</h2>
-          <p style={{ marginBottom: '1rem', opacity: 0.8 }}>
-            Share a single QR code that automatically hands out the next available claim code for a selected
-            event. Each scan redirects visitors to the regular claim flow with a fresh reservation.
-          </p>
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            <select
-              value={selectedQrEventId}
-              onChange={(e) => setSelectedQrEventId(e.target.value)}
-              style={inputStyle}
-            >
-              <option value="">Select an event</option>
-              {events.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.name}
-                </option>
-              ))}
-            </select>
-            {dynamicClaimUrl ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                <QRCodeSVG value={dynamicClaimUrl} size={220} includeMargin />
-                <code style={{ fontSize: '0.85rem', opacity: 0.8 }}>{dynamicClaimUrl}</code>
-                <button style={buttonStyle} onClick={copyDynamicLink}>
-                  Copy Claim Link
-                </button>
-                {copyMessage && (
-                  <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>{copyMessage}</p>
-                )}
-                <p style={{ fontSize: '0.8rem', opacity: 0.6, textAlign: 'center' }}>
-                  Reservations auto-expire after 10 minutes if visitors abandon the flow, so the QR keeps
-                  recycling codes safely.
-                </p>
-              </div>
-            ) : (
-              <p style={{ opacity: 0.7 }}>Select an event to generate the dynamic QR code.</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Frame Template Management */}
-      {events.length > 0 && (
-        <div style={cardStyle}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Event Frame Template</h2>
-          <p style={{ marginBottom: '1rem', opacity: 0.8 }}>
-            Upload a base frame (PNG with transparency works best) and describe where the visitor selfie should
-            be placed. During minting we&apos;ll composite their photo onto this template, turning each NFT into a
-            branded badge.
-          </p>
-
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            <select
-              value={selectedFrameEventId}
-              onChange={(event) => setSelectedFrameEventId(event.target.value)}
-              style={inputStyle}
-            >
-              <option value="">Select an event</option>
-              {events.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.name}
-                </option>
-              ))}
-            </select>
-
-            {selectedFrameEventId ? (
-              <div
-                style={{
-                  display: 'grid',
-                  gap: '1rem',
-                }}
-              >
-                <div>
-                  <label
-                    htmlFor="frame-upload-input"
-                    style={{
-                      display: 'block',
-                      fontSize: '0.9rem',
-                      marginBottom: '0.5rem',
-                      opacity: 0.8,
-                    }}
-                  >
-                    Frame artwork (.png or .jpg)
-                  </label>
-                  <input
-                    id="frame-upload-input"
-                    type="file"
-                    accept="image/png,image/jpeg"
-                    onChange={handleFrameFileChange}
-                    style={{ ...inputStyle, padding: '0.5rem' }}
-                  />
-                  <p style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '0.5rem' }}>
-                    Tip: match these coordinates to the template&apos;s pixel dimensions for precise placement.
-                  </p>
-                </div>
-
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                    gap: '0.75rem',
-                  }}
-                >
-                  {([
-                    ['x', 'Selfie X (px)'],
-                    ['y', 'Selfie Y (px)'],
-                    ['width', 'Selfie Width (px)'],
-                    ['height', 'Selfie Height (px)'],
-                    ['borderRadius', 'Corner Radius (px)'],
-                  ] as const).map(([field, label]) => (
-                    <div key={field}>
-                      <label
-                        htmlFor={`frame-${field}`}
-                        style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', opacity: 0.75 }}
-                      >
-                        {label}
-                      </label>
-                      <input
-                        id={`frame-${field}`}
-                        type="number"
-                        value={frameConfigInputs[field]}
-                        onChange={(event) =>
-                          handleFrameInputChange(field, Number.parseFloat(event.target.value))
-                        }
-                        style={inputStyle}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <div
-                  style={{
-                    border: '1px solid rgba(148,163,184,0.25)',
-                    borderRadius: '12px',
-                    padding: '1rem',
-                    background: 'rgba(15,23,42,0.45)',
-                    display: 'grid',
-                    gap: '0.75rem',
-                  }}
-                >
-                  <p style={{ fontSize: '0.9rem', opacity: 0.8, margin: 0 }}>Live preview</p>
-                  <div
-                    style={{
-                      position: 'relative',
-                      maxWidth: '420px',
-                      width: '100%',
-                      margin: '0 auto',
-                    }}
-                  >
-                    {frameTemplatePreview ? (
-                      <>
-                        <Image
-                          ref={frameImageRef}
-                          src={frameTemplatePreview}
-                          alt="Frame template preview"
-                          width={framePreviewNaturalSize?.width ?? 1200}
-                          height={framePreviewNaturalSize?.height ?? 1200}
-                          style={{ width: '100%', height: 'auto', borderRadius: '10px', display: 'block' }}
-                          onLoadingComplete={handleFrameImageLoaded}
-                          unoptimized
-                        />
-                        {frameOverlayStyle && <div style={frameOverlayStyle} />}
-                      </>
-                    ) : (
-                      <div
-                        style={{
-                          width: '100%',
-                          padding: '2.5rem 1rem',
-                          textAlign: 'center',
-                          borderRadius: '10px',
-                          border: '1px dashed rgba(148,163,184,0.4)',
-                          opacity: 0.65,
-                        }}
-                      >
-                        Upload a frame artwork to preview it here.
-                      </div>
-                    )}
-                  </div>
-                  <p style={{ fontSize: '0.8rem', opacity: 0.65, margin: 0 }}>
-                    The dotted rectangle shows where the visitor photo will land after resizing.
-                  </p>
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    style={buttonStyle}
-                    onClick={() => {
-                      void handleFrameSubmit();
-                    }}
-                    disabled={frameLoading}
-                  >
-                    {frameLoading ? 'Saving frame…' : 'Save frame template'}
-                  </button>
-                  <button
-                    type="button"
-                    style={outlineButtonStyle}
-                    onClick={() => {
-                      setFrameUploadPreview(null);
-                      setFrameTemplatePreview(selectedFrameEvent?.frameTemplateUrl ?? null);
-                    }}
-                    disabled={frameLoading}
-                  >
-                    Reset upload
-                  </button>
-                </div>
-
-                {frameError && <p style={{ color: '#fda4af', margin: 0 }}>{frameError}</p>}
-                {frameMessage && <p style={{ color: '#34d399', margin: 0 }}>{frameMessage}</p>}
-              </div>
-            ) : (
-              <p style={{ opacity: 0.7 }}>Select an event to configure its frame template.</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Claim Codes List */}
-      {claimCodes.length > 0 && (
-        <div style={cardStyle}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Claim Codes</h2>
-          <div style={{ display: 'grid', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
-            {claimCodes.map((code) => (
-              <div
-                key={code.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '0.75rem',
-                  border: '1px solid rgba(148, 163, 184, 0.2)',
-                  borderRadius: '6px',
-                  fontSize: '0.9rem',
-                }}
-              >
-                <span style={{ fontFamily: 'monospace' }}>{code.code}</span>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <span style={{ 
-                    color: code.status === 'unused' ? '#34d399' : '#fbbf24',
-                    fontSize: '0.8rem',
-                  }}>
-                    {code.status}
-                  </span>
-                  <a
-                    href={`/claim/${code.code}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: '#22d3ee', textDecoration: 'none', fontSize: '0.8rem' }}
-                  >
-                    Test →
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </main>
   );
 }
