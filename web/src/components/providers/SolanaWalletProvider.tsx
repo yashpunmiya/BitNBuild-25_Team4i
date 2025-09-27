@@ -3,7 +3,7 @@
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import {
-  BackpackWalletAdapter,
+ 
   PhantomWalletAdapter,
   SolflareWalletAdapter,
 } from '@solana/wallet-adapter-wallets';
@@ -23,7 +23,7 @@ type Props = {
 
 export function SolanaWalletProvider({ children }: Props) {
   const wallets = useMemo(
-    () => [new PhantomWalletAdapter(), new BackpackWalletAdapter(), new SolflareWalletAdapter()],
+    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
     [],
   );
 
