@@ -33,12 +33,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const imageUri = await uploadImage(buffer, contentType, `${payload.code}.png`);
 
     const nftName = getClaimNftName(claim.events.name);
+    const trimmedDescription = (claim.events.description ?? '').trim();
+    const description =
+      trimmedDescription.length > 0
+        ? trimmedDescription
+        : `Proof of Presence for ${claim.events.name}`;
 
     const metadataUri = await uploadMetadata(
       {
         name: nftName,
         symbol: 'POP',
-        description: claim.events.description,
+        description,
         image: imageUri,
         attributes: [
           { trait_type: 'Event', value: claim.events.name },
@@ -53,6 +58,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           ],
           category: 'image',
         },
+        external_url: `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/claim/${payload.code}`,
       },
       `${payload.code}.json`,
     );

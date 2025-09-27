@@ -41,12 +41,18 @@ export const createCollectionNft = async (
   const collectionAuthority = getCollectionAuthority();
   const feePayer = getFeePayer();
   const mint = generateSigner(umi);
+  const trimmedName = input.name.trim();
+  const trimmedDescription = input.description.trim();
+  const collectionDescription =
+    trimmedDescription.length > 0
+      ? trimmedDescription
+      : `Collection for ${trimmedName || 'Proof of Presence'}`;
 
   const metadataUri = await uploadMetadata(
     {
-      name: getCollectionName(input.name),
+      name: getCollectionName(trimmedName || 'Proof of Presence'),
       symbol: 'POP',
-      description: input.description,
+      description: collectionDescription,
       image: '',
       attributes: input.name
         ? [
@@ -65,7 +71,7 @@ export const createCollectionNft = async (
     authority: collectionAuthority,
     payer: feePayer,
     updateAuthority: collectionAuthority.publicKey,
-    name: getCollectionName(input.name),
+    name: getCollectionName(trimmedName || 'Proof of Presence'),
     symbol: 'POP',
     uri: metadataUri,
     sellerFeeBasisPoints: percentAmount(0),
