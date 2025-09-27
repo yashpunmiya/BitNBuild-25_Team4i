@@ -107,7 +107,7 @@ const createOwnerValidationInstruction = (
     {
       instruction: {
         programId: publicKey(ix.programId.toBase58()),
-        accounts: ix.keys.map(({ pubkey: key, isSigner, isWritable }) => ({
+        keys: ix.keys.map(({ pubkey: key, isSigner, isWritable }) => ({
           pubkey: publicKey(key.toBase58()),
           isSigner,
           isWritable,

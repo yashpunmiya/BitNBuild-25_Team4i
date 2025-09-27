@@ -17,6 +17,8 @@ if (!endpoint) {
   throw new Error('NEXT_PUBLIC_SOLANA_RPC_URL is not set');
 }
 
+const rpcEndpoint: string = endpoint;
+
 type Props = {
   children: React.ReactNode;
 };
@@ -28,7 +30,7 @@ export function SolanaWalletProvider({ children }: Props) {
   );
 
   return (
-    <ConnectionProvider endpoint={endpoint} config={{ commitment: 'confirmed' }}>
+    <ConnectionProvider endpoint={rpcEndpoint} config={{ commitment: 'confirmed' }}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>{children}</WalletModalProvider>
       </WalletProvider>

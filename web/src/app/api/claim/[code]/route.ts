@@ -4,9 +4,10 @@ import { getClaimByCode } from '@/lib/supabase';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { code: string } },
+  { params }: { params: Promise<{ code: string }> },
 ): Promise<NextResponse> {
-  const claim = await getClaimByCode(params.code);
+  const { code } = await params;
+  const claim = await getClaimByCode(code);
 
   if (!claim || !claim.events) {
     return NextResponse.json({ error: 'Claim code not found' }, { status: 404 });

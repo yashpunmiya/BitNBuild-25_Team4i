@@ -78,7 +78,16 @@ const statusCopy: Record<Exclude<ClaimStatus, 'idle' | 'success'>, string> = {
   finalizing: 'Finalizing on Solana…',
 };
 
-export default function ClaimPage({ params }: { params: { code: string } }) {
+export default function ClaimPage({ params }: { params: Promise<{ code: string }> }) {
+  const [code, setCode] = useState<string>('');
+  
+  useEffect(() => {
+    const resolveParams = async () => {
+      const { code: resolvedCode } = await params;
+      setCode(resolvedCode);
+    };
+    resolveParams();
+  }, [params]);
   const { publicKey, signTransaction } = useWallet();
   const [claim, setClaim] = useState<ClaimResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,12 +104,14 @@ export default function ClaimPage({ params }: { params: { code: string } }) {
   const isBusy = useMemo(() => status !== 'idle' && status !== 'success', [status]);
 
   useEffect(() => {
+    if (!code) return;
+    
     let cancelled = false;
 
     const fetchClaim = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/claim/${params.code}`);
+        const response = await fetch(`/api/claim/${code}`);
         if (!response.ok) {
           throw new Error('Unable to load claim');
         }
@@ -124,7 +135,7 @@ export default function ClaimPage({ params }: { params: { code: string } }) {
     return () => {
       cancelled = true;
     };
-  }, [params.code]);
+  }, [code]);
 
   useEffect(() => {
     return () => {

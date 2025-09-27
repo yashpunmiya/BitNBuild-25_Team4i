@@ -1,5 +1,5 @@
 ﻿import { Buffer } from 'buffer';
-import { createGenericFileFromBuffer, type Umi } from '@metaplex-foundation/umi';
+import { createGenericFile, type Umi } from '@metaplex-foundation/umi';
 
 import { getUmi } from './umi';
 
@@ -11,11 +11,11 @@ const uploadBuffer = async (
   contentType: string,
   umi: Umi,
 ): Promise<string> => {
-  const file = createGenericFileFromBuffer(ensureUint8Array(buffer), fileName, {
+  const file = createGenericFile(ensureUint8Array(buffer), fileName, {
     contentType,
   });
 
-  const { uri } = await umi.uploader.upload(file);
+  const [uri] = await umi.uploader.upload([file]);
   return uri;
 };
 
