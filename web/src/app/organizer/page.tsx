@@ -58,6 +58,13 @@ type GenerateCodesResponse = {
   error?: string;
 };
 
+type FeePayerBalance = {
+  lamports: number;
+  sol: number;
+};
+
+const FALLBACK_FEE_PAYER_ADDRESS = '4Eoeq4SPSevhrGokGiVdpvooDZ474GX4gTmAis5YUqWC';
+
 const containerStyle: React.CSSProperties = {
   maxWidth: '1000px',
   margin: '0 auto',
@@ -87,6 +94,13 @@ const buttonStyle: React.CSSProperties = {
   transition: 'all 0.2s',
 };
 
+const outlineButtonStyle: React.CSSProperties = {
+  ...buttonStyle,
+  background: 'transparent',
+  border: '1px solid rgba(56, 189, 248, 0.45)',
+  color: '#38bdf8',
+};
+
 const inputStyle: React.CSSProperties = {
   background: 'rgba(15, 23, 42, 0.8)',
   border: '1px solid rgba(148, 163, 184, 0.3)',
@@ -107,6 +121,15 @@ export default function OrganizerPage() {
   const [origin, setOrigin] = useState<string>(process.env.NEXT_PUBLIC_BASE_URL ?? '');
   const [selectedQrEventId, setSelectedQrEventId] = useState('');
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
+
+  // Fee payer funding state
+  const [feePayerAddress, setFeePayerAddress] = useState<string>(FALLBACK_FEE_PAYER_ADDRESS);
+  const [feePayerBalance, setFeePayerBalance] = useState<FeePayerBalance | null>(null);
+  const [feePayerLoading, setFeePayerLoading] = useState<boolean>(false);
+  const [funding, setFunding] = useState<boolean>(false);
+  const [fundingMessage, setFundingMessage] = useState<string | null>(null);
+  const [fundingError, setFundingError] = useState<string | null>(null);
+  const [copyAddressMessage, setCopyAddressMessage] = useState<string | null>(null);
 
   // Event creation form
   const [eventName, setEventName] = useState('');
@@ -192,6 +215,112 @@ export default function OrganizerPage() {
     }
   };
 
+  const formatSol = useCallback((value: number): string => {
+    return value.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 4,
+    });
+  }, []);
+
+  const shortenValue = useCallback((value: string, visible = 4): string => {
+    if (!value) {
+      return '';
+    }
+    return value.length <= visible * 2
+      ? value
+      : `${value.slice(0, visible)}…${value.slice(-visible)}`;
+  }, []);
+
+  const fetchFeePayerBalance = useCallback(async () => {
+    setFeePayerLoading(true);
+    setFundingError(null);
+    try {
+      const response = await fetch('/api/wallet/fee-payer/balance', {
+        cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.error ?? 'Failed to fetch fee payer balance');
+      }
+
+      if (payload?.address) {
+        setFeePayerAddress(String(payload.address));
+      }
+
+      if (typeof payload?.lamports === 'number' && typeof payload?.sol === 'number') {
+        setFeePayerBalance({
+          lamports: payload.lamports,
+          sol: payload.sol,
+        });
+      } else {
+        setFeePayerBalance(null);
+      }
+    } catch (err) {
+      setFeePayerBalance(null);
+      setFundingError(err instanceof Error ? err.message : 'Failed to fetch fee payer balance');
+    } finally {
+      setFeePayerLoading(false);
+    }
+  }, [setFeePayerAddress, setFeePayerBalance, setFundingError]);
+
+  const handleCopyFeePayerAddress = useCallback(async () => {
+    if (!feePayerAddress) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(feePayerAddress);
+      setCopyAddressMessage('Address copied');
+    } catch (copyError) {
+      console.error('Failed to copy fee payer address', copyError);
+      setCopyAddressMessage('Copy failed. Use manual copy.');
+    }
+
+    setTimeout(() => setCopyAddressMessage(null), 2500);
+  }, [feePayerAddress]);
+
+  const handleRequestAirdrop = useCallback(async () => {
+    setFunding(true);
+    setFundingError(null);
+    setFundingMessage(null);
+
+    try {
+      const response = await fetch('/api/wallet/fee-payer/airdrop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 1 }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.error ?? 'Unable to request devnet airdrop');
+      }
+
+      const solAmount = typeof payload?.sol === 'number' ? formatSol(payload.sol) : '1';
+      const signature = typeof payload?.signature === 'string' ? payload.signature : '';
+
+      setFundingMessage(
+        `Devnet airdrop requested: ${solAmount} SOL${
+          signature ? ` (signature ${shortenValue(signature, 6)})` : ''
+        }`,
+      );
+
+      await fetchFeePayerBalance();
+    } catch (airdropError) {
+      setFundingError(
+        airdropError instanceof Error ? airdropError.message : 'Unable to request devnet airdrop',
+      );
+    } finally {
+      setFunding(false);
+    }
+  }, [fetchFeePayerBalance, formatSol, shortenValue]);
+
+  useEffect(() => {
+    void fetchFeePayerBalance();
+  }, [fetchFeePayerBalance]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setOrigin(window.location.origin);
@@ -235,6 +364,91 @@ export default function OrganizerPage() {
           Create events, mint collection NFTs, and generate claim codes for visitors.
         </p>
         <WalletMultiButton />
+      </div>
+
+      <div style={cardStyle}>
+        <h2 style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>Fee Payer Treasury</h2>
+        <p style={{ opacity: 0.75, marginBottom: '1rem' }}>
+          All attendee mints use a shared fee payer wallet. Fund it with devnet SOL so visitors can mint
+          without paying gas.
+        </p>
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', opacity: 0.7 }}>Fee payer address</span>
+            <code
+              style={{
+                background: 'rgba(15,23,42,0.7)',
+                borderRadius: '8px',
+                padding: '0.5rem 0.75rem',
+                fontSize: '0.85rem',
+                letterSpacing: '0.02em',
+              }}
+            >
+              {feePayerAddress}
+            </code>
+            <button
+              style={outlineButtonStyle}
+              onClick={handleCopyFeePayerAddress}
+              type="button"
+            >
+              Copy address
+            </button>
+            {copyAddressMessage && (
+              <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>{copyAddressMessage}</span>
+            )}
+          </div>
+
+          <div style={{ fontSize: '0.95rem', opacity: 0.85 }}>
+            Current balance:{' '}
+            {feePayerLoading
+              ? 'Loading…'
+              : feePayerBalance
+                ? `${formatSol(feePayerBalance.sol)} SOL (${feePayerBalance.lamports.toLocaleString()} lamports)`
+                : 'Unavailable'}
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <button
+              style={buttonStyle}
+              type="button"
+              onClick={() => {
+                void fetchFeePayerBalance();
+              }}
+              disabled={feePayerLoading || funding}
+            >
+              {feePayerLoading ? 'Refreshing…' : 'Refresh balance'}
+            </button>
+            <button
+              style={buttonStyle}
+              type="button"
+              onClick={handleRequestAirdrop}
+              disabled={funding || feePayerLoading}
+            >
+              {funding ? 'Requesting devnet SOL…' : 'Request 1 SOL devnet airdrop'}
+            </button>
+            <a
+              href={`https://faucet.solana.com/?cluster=devnet&address=${feePayerAddress}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                ...outlineButtonStyle,
+                display: 'inline-flex',
+                alignItems: 'center',
+                textDecoration: 'none',
+              }}
+            >
+              Open Solana faucet →
+            </a>
+          </div>
+
+          {fundingError && (
+            <p style={{ color: '#fda4af', margin: 0 }}>{fundingError}</p>
+          )}
+
+          {fundingMessage && (
+            <p style={{ color: '#34d399', margin: 0 }}>{fundingMessage}</p>
+          )}
+        </div>
       </div>
 
       {error && (
