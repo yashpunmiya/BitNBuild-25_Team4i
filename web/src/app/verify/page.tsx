@@ -155,74 +155,87 @@ export default function VerifyPage(): ReactElement {
 
   return (
     <main className={styles.page}>
+      <div className={styles.sunbeam} aria-hidden />
+      <div className={styles.sparkleOne} aria-hidden />
+      <div className={styles.sparkleTwo} aria-hidden />
       <div className={styles.shell}>
         <section className={styles.card}>
           <header className={styles.heroHeader}>
             <p className={styles.eyebrow}>Proof of Presence • Verification</p>
             <h1 className={styles.title}>Verify a Minted Proof</h1>
             <p className={styles.subtitle}>
-              Confirm a visitor&apos;s Proof of Presence NFT by entering the claim code, the minted wallet address, or the
-              transaction signature. The verifier queries organizer records to ensure the NFT was minted under the
+              Confirm a visitor&apos;s Proof of Presence NFT by entering the claim code, minted wallet address, or
+              transaction signature. We&apos;ll cross-check organizer records to make sure everything was minted in the
               correct collection.
             </p>
           </header>
 
           <form onSubmit={handleSubmit} className={styles.form}>
-            <div className={styles.inputRow}>
-              <label className={styles.label}>
-                <span>Claim Code</span>
-                <input
-                  className={styles.input}
-                  placeholder="e.g. POP-1234 or demo-code"
-                  value={claimCode}
-                  onChange={(event) => setClaimCode(event.target.value)}
-                  autoComplete="off"
-                />
-              </label>
-              <label className={styles.label}>
-                <span>Wallet Address</span>
-                <input
-                  className={styles.input}
-                  placeholder="Solana wallet that received the proof"
-                  value={wallet}
-                  onChange={(event) => setWallet(event.target.value)}
-                  autoComplete="off"
-                />
-              </label>
-              <label className={styles.label}>
-                <span>Transaction Signature</span>
-                <input
-                  className={styles.input}
-                  placeholder="Solana transaction signature"
-                  value={txSignature}
-                  onChange={(event) => setTxSignature(event.target.value)}
-                  autoComplete="off"
-                />
-              </label>
-            </div>
+            <fieldset className={styles.inputFieldset}>
+              <legend className={styles.srOnly}>Verification search fields</legend>
+              <div className={styles.inputRow}>
+                <label className={styles.label}>
+                  <span>Claim Code</span>
+                  <input
+                    className={styles.input}
+                    placeholder="e.g. POP-1234 or demo-code"
+                    value={claimCode}
+                    onChange={(event) => setClaimCode(event.target.value)}
+                    autoComplete="off"
+                  />
+                </label>
+                <label className={styles.label}>
+                  <span>Wallet Address</span>
+                  <input
+                    className={styles.input}
+                    placeholder="Solana wallet that received the proof"
+                    value={wallet}
+                    onChange={(event) => setWallet(event.target.value)}
+                    autoComplete="off"
+                  />
+                </label>
+                <label className={styles.label}>
+                  <span>Transaction Signature</span>
+                  <input
+                    className={styles.input}
+                    placeholder="Solana transaction signature"
+                    value={txSignature}
+                    onChange={(event) => setTxSignature(event.target.value)}
+                    autoComplete="off"
+                  />
+                </label>
+              </div>
+            </fieldset>
 
             <div className={styles.actions}>
               <button type="submit" className={styles.primaryButton} disabled={isLoading}>
+                {isLoading && <span className={styles.loader} aria-hidden />}
                 {isLoading ? 'Verifying…' : 'Run verification'}
               </button>
               <Link href="/" className={styles.secondaryLink}>
-                ← Back to Home
+                <span aria-hidden>←</span> Back to Home
               </Link>
             </div>
 
-            {!canSubmit && submitted && !error && (
-              <p className={styles.inlineError}>Enter at least one lookup value to run verification.</p>
-            )}
+            <p className={styles.helperText}>
+              Add any combination of details — providing more than one lookup value helps us find an exact match faster.
+            </p>
 
-            {error && <p className={styles.inlineError}>{error}</p>}
+            <div className={styles.feedbackArea} aria-live="polite" aria-atomic="true">
+              {!canSubmit && submitted && !error && (
+                <p className={styles.inlineError}>Enter at least one lookup value to run verification.</p>
+              )}
 
-            {warnings.length > 0 && (
-              <ul className={styles.warningList}>
-                {warnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-            )}
+              {error && <p className={styles.inlineError}>{error}</p>}
+
+              {warnings.length > 0 && (
+                <ul className={styles.warningList}>
+                  {warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </form>
         </section>
 
@@ -245,10 +258,10 @@ export default function VerifyPage(): ReactElement {
               const pillClass = match.minted ? `${styles.pill} ${styles.pillMinted}` : styles.pill;
 
               return (
-                <div key={match.id} className={styles.resultCard}>
+                <article key={match.id} className={styles.resultCard}>
                   <div className={styles.resultHeader}>
                     <span className={pillClass}>{match.minted ? 'Minted' : match.status.toUpperCase()}</span>
-                    <span className={styles.stateMessage}>Sources: {match.sources.join(', ')}</span>
+                    <span className={styles.sourceList}>Sources: {match.sources.join(', ')}</span>
                   </div>
 
                   <div>
@@ -256,58 +269,65 @@ export default function VerifyPage(): ReactElement {
                     <p className={styles.resultSubtitle}>{match.event.description}</p>
                   </div>
 
-                  <div className={styles.detailGrid}>
+                  <dl className={styles.detailGrid}>
                     <div>
-                      <strong>Claim Code:</strong> {match.code}
+                      <dt>Claim Code</dt>
+                      <dd>{match.code}</dd>
                     </div>
                     <div>
-                      <strong>Wallet:</strong>{' '}
-                      {match.wallet ? (
+                      <dt>Wallet</dt>
+                      <dd>
+                        {match.wallet ? (
+                          <a
+                            href={`https://solscan.io/account/${match.wallet}?cluster=devnet`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={styles.resultLink}
+                          >
+                            {shorten(match.wallet) ?? 'View Wallet'}
+                          </a>
+                        ) : (
+                          'Not yet assigned'
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Transaction</dt>
+                      <dd>
+                        {match.txSignature ? (
+                          <a
+                            href={`https://solscan.io/tx/${match.txSignature}?cluster=devnet`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={styles.resultLink}
+                          >
+                            {shorten(match.txSignature, 8) ?? 'View Transaction'}
+                          </a>
+                        ) : (
+                          'Pending finalization'
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Collection Mint</dt>
+                      <dd>
                         <a
-                          href={`https://solscan.io/account/${match.wallet}?cluster=devnet`}
+                          href={`https://solscan.io/token/${match.event.collectionMint}?cluster=devnet`}
                           target="_blank"
                           rel="noreferrer"
                           className={styles.resultLink}
                         >
-                          {shorten(match.wallet) ?? 'View Wallet'}
+                          {shorten(match.event.collectionMint, 6) ?? match.event.collectionMint}
                         </a>
-                      ) : (
-                        'Not yet assigned'
-                      )}
+                      </dd>
                     </div>
-                    <div>
-                      <strong>Transaction:</strong>{' '}
-                      {match.txSignature ? (
-                        <a
-                          href={`https://solscan.io/tx/${match.txSignature}?cluster=devnet`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={styles.resultLink}
-                        >
-                          {shorten(match.txSignature, 8) ?? 'View Transaction'}
-                        </a>
-                      ) : (
-                        'Pending finalization'
-                      )}
-                    </div>
-                    <div>
-                      <strong>Collection Mint:</strong>{' '}
-                      <a
-                        href={`https://solscan.io/token/${match.event.collectionMint}?cluster=devnet`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={styles.resultLink}
-                      >
-                        {shorten(match.event.collectionMint, 6) ?? match.event.collectionMint}
-                      </a>
-                    </div>
-                  </div>
+                  </dl>
 
                   <div className={styles.timestampRow}>
                     <span>Created: {new Date(match.createdAt).toLocaleString()}</span>
                     <span>Updated: {new Date(match.updatedAt).toLocaleString()}</span>
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>

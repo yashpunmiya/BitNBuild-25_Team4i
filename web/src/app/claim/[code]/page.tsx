@@ -321,17 +321,33 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
   const isClaimComplete = status === 'success' || claim.status === 'claimed';
   const statusTagClass = isClaimComplete ? styles.tag : `${styles.tag} ${styles.tagInactive}`;
 
+  const flowSteps: Array<{ key: ClaimStatus; label: string; helper?: string }> = [
+    { key: 'uploading', label: 'Upload snapshot', helper: 'Save your proof on Arweave.' },
+    { key: 'building', label: 'Build transaction', helper: 'Prepare your mint transaction.' },
+    { key: 'signing', label: 'Sign transaction', helper: 'Approve the mint from your wallet.' },
+    { key: 'finalizing', label: 'Finalize on-chain', helper: 'Confirm the mint on Solana.' },
+    { key: 'success', label: 'Mint complete!', helper: 'Celebrate your brand-new proof.' },
+  ];
+
+  const currentStatus = isClaimComplete ? 'success' : status;
+  const currentStepIndex =
+    currentStatus === 'idle'
+      ? -1
+      : flowSteps.findIndex((step) => step.key === currentStatus);
+
   return (
     <main className={styles.page}>
+      <div className={styles.pageBackdrop} aria-hidden />
       <div className={styles.shell}>
         <section className={`${styles.card} ${styles.heroCard}`}>
+          <div className={styles.heroGlow} aria-hidden />
           <div className={styles.heroContent}>
             <span className={styles.heroEyebrow}>Claim Code • {claim.code}</span>
             <h1 className={styles.heroTitle}>{claim.event.name}</h1>
             <p className={styles.heroDescription}>{claim.event.description}</p>
             <div className={styles.summaryRow}>
               <span className={statusTagClass}>{isClaimComplete ? 'Mint ready' : 'Awaiting proof'}</span>
-              <span>Collection: {claim.event.collectionMint}</span>
+              <span className={styles.summaryMuted}>Collection: {claim.event.collectionMint}</span>
             </div>
             <div className={styles.detailList}>
               <span>
@@ -345,35 +361,41 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
             </div>
           </div>
           <div className={styles.walletRow}>
+            <span className={styles.walletHelper}>Connect to continue</span>
             <WalletMultiButton />
           </div>
         </section>
 
         <div className={styles.gridTwo}>
           <section className={styles.card}>
-            <div>
-              <h2>1. Capture your proof of presence</h2>
-              <p className={styles.statusMessage}>
-                Start the camera, snap your event selfie, and we’ll use it to personalize your NFT badge.
+            <header className={styles.cardHeader}>
+              <div>
+                <span className={styles.stepBadge}>Step 1</span>
+                <h2>Capture your proof of presence</h2>
+              </div>
+              <p className={styles.supportCopy}>
+                Start the camera, snap your event selfie, and we’ll use it to personalize your adorable NFT badge.
               </p>
-            </div>
-            <video
-              ref={videoRef}
-              className={`${styles.cameraFeed} ${photoData ? styles.hidden : ''}`}
-              playsInline
-              muted
-            />
-            <canvas ref={canvasRef} className={styles.hidden} />
-            {photoData && photoDimensions && (
-              <Image
-                src={photoData}
-                alt="Captured snapshot"
-                width={photoDimensions.width}
-                height={photoDimensions.height}
-                className={styles.snapshotImage}
-                unoptimized
+            </header>
+            <div className={styles.cameraFrame}>
+              <video
+                ref={videoRef}
+                className={`${styles.cameraFeed} ${photoData ? styles.hidden : ''}`}
+                playsInline
+                muted
               />
-            )}
+              <canvas ref={canvasRef} className={styles.hidden} />
+              {photoData && photoDimensions && (
+                <Image
+                  src={photoData}
+                  alt="Captured snapshot"
+                  width={photoDimensions.width}
+                  height={photoDimensions.height}
+                  className={styles.snapshotImage}
+                  unoptimized
+                />
+              )}
+            </div>
             <div className={styles.buttonRow}>
               {stream ? (
                 <button className={styles.primaryButton} onClick={capturePhoto} disabled={isBusy}>
@@ -393,19 +415,48 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
           </section>
 
           <section className={styles.card}>
-            <div>
-              <h2>2. Mint your NFT</h2>
-              <ol className={styles.stepList}>
-                <li>Connect a Solana wallet – the organizer covers minting fees.</li>
-                <li>Capture and upload your snapshot to permanent storage.</li>
-                <li>Approve the transaction when prompted to receive your NFT.</li>
-              </ol>
-            </div>
+            <header className={styles.cardHeader}>
+              <div>
+                <span className={styles.stepBadge}>Step 2</span>
+                <h2>Mint your keepsake NFT</h2>
+              </div>
+              <p className={styles.supportCopy}>
+                Connect a wallet, review the steps, and let the organizer handle the gas so you can focus on memories.
+              </p>
+            </header>
+            <ol className={styles.stepList}>
+              <li>Connect a Solana wallet – the organizer covers minting fees.</li>
+              <li>Capture and upload your snapshot to permanent storage.</li>
+              <li>Approve the transaction when prompted to receive your NFT.</li>
+            </ol>
+            <ul className={styles.progressList}>
+              {flowSteps.map((step, index) => {
+                const isComplete = currentStepIndex > index || isClaimComplete;
+                const isActive = index === currentStepIndex;
+
+                return (
+                  <li
+                    key={step.key}
+                    className={`${styles.progressItem} ${
+                      isComplete ? styles.progressComplete : ''
+                    } ${isActive ? styles.progressActive : ''}`}
+                  >
+                    <span className={styles.progressIndicator} aria-hidden />
+                    <div className={styles.progressCopy}>
+                      <span className={styles.progressLabel}>{step.label}</span>
+                      {step.helper && <span className={styles.progressHelper}>{step.helper}</span>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
             <button className={styles.primaryButton} onClick={handleSubmit} disabled={isBusy}>
-              {status === 'success' ? 'Minted!' : 'Mint proof of presence'}
+              {isClaimComplete ? 'Minted!' : 'Mint proof of presence'}
             </button>
             {isBusy && status !== 'idle' && status !== 'success' && (
-              <p className={styles.statusMessage}>{statusCopy[status]}</p>
+              <p className={`${styles.statusMessage} ${styles.statusPulse}`} aria-live="polite">
+                {statusCopy[status]}
+              </p>
             )}
             {buildDetails?.feePayer && (
               <p className={styles.statusMessage}>
@@ -440,46 +491,7 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
                 </Link>
               </p>
             )}
-            {metadataInfo && (
-              <div className={styles.metadataPanel}>
-                <h3 className={styles.metadataTitle}>Snapshot upload</h3>
-                <p>
-                  Metadata:{' '}
-                  <a
-                    href={metadataInfo.metadataUri}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={styles.infoLink}
-                  >
-                    Open Arweave JSON
-                  </a>
-                </p>
-                <p>
-                  Image:{' '}
-                  <a
-                    href={metadataInfo.imageUri}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={styles.infoLink}
-                  >
-                    View snapshot
-                  </a>
-                </p>
-                {metadataInfo.imageUri && (
-                  <Image
-                    src={metadataInfo.imageUri}
-                    alt="Arweave snapshot"
-                    width={600}
-                    height={600}
-                    className={styles.metadataImage}
-                    unoptimized
-                  />
-                )}
-                <p className={styles.statusMessage}>
-                  Arweave links can take a minute or two to propagate. Refresh the tabs above if they initially 404.
-                </p>
-              </div>
-            )}
+            
             {error && <p className={styles.alert}>{error}</p>}
           </section>
         </div>
