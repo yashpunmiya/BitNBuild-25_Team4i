@@ -36,6 +36,13 @@ type ClaimResponse = {
   };
 };
 
+type LocationData = {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  timestamp: number;
+};
+
 type MetadataResponse = {
   metadataUri: string;
   imageUri: string;
@@ -84,6 +91,9 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [metadataInfo, setMetadataInfo] = useState<MetadataResponse | null>(null);
   const [buildDetails, setBuildDetails] = useState<BuildTransactionResponse | null>(null);
+  const [locationData, setLocationData] = useState<LocationData | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -181,7 +191,7 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
     }
   };
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) {
       return;
     }
@@ -195,6 +205,9 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
       return;
     }
 
+    // Capture location along with photo
+    await captureLocation();
+
     canvasRef.current.width = width;
     canvasRef.current.height = height;
     context.drawImage(videoRef.current, 0, 0, width, height);
@@ -202,6 +215,55 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
     setPhotoData(dataUrl);
     setPhotoDimensions({ width, height });
     stopCamera();
+  };
+
+  const captureLocation = async (): Promise<LocationData | null> => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by this browser');
+      return null;
+    }
+
+    setLocationLoading(true);
+    setLocationError(null);
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location: LocationData = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: Date.now(),
+          };
+          setLocationData(location);
+          setLocationLoading(false);
+          resolve(location);
+        },
+        (error) => {
+          console.error('Location error:', error);
+          let errorMessage = 'Failed to get location';
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Location access denied by user';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Location information unavailable';
+              break;
+            case error.TIMEOUT:
+              errorMessage = 'Location request timed out';
+              break;
+          }
+          setLocationError(errorMessage);
+          setLocationLoading(false);
+          resolve(null);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000,
+        }
+      );
+    });
   };
 
   const resetFlow = () => {
@@ -212,6 +274,8 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
     setError(null);
     setMetadataInfo(null);
     setBuildDetails(null);
+    setLocationData(null);
+    setLocationError(null);
     startCamera();
   };
 
@@ -242,7 +306,11 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
       const metadataResponse = await fetch('/api/metadata/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: claim.code, imageDataUrl: photoData }),
+        body: JSON.stringify({ 
+          code: claim.code, 
+          imageDataUrl: photoData,
+          locationData: locationData 
+        }),
       });
       if (!metadataResponse.ok) {
         throw new Error('Failed to upload snapshot.');
@@ -412,6 +480,27 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
                 </button>
               )}
             </div>
+            
+            {/* Location Status */}
+            <div className={styles.locationStatus}>
+              {locationLoading && (
+                <p className={styles.locationLoading}>📍 Getting your location...</p>
+              )}
+              {locationError && (
+                <p className={styles.locationError}>⚠️ {locationError}</p>
+              )}
+              {locationData && (
+                <p className={styles.locationSuccess}>
+                  ✅ Location captured ({locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)})
+                  {locationData.accuracy && ` - Accuracy: ${Math.round(locationData.accuracy)}m`}
+                </p>
+              )}
+              {!locationData && !locationLoading && !locationError && photoData && (
+                <p className={styles.locationWarning}>
+                  ⚠️ Location not captured - NFT will be minted without location verification
+                </p>
+              )}
+            </div>
           </section>
 
           <section className={styles.card}>
@@ -426,7 +515,8 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
             </header>
             <ol className={styles.stepList}>
               <li>Connect a Solana wallet – the organizer covers minting fees.</li>
-              <li>Capture and upload your snapshot to permanent storage.</li>
+              <li>Capture your snapshot and location for proof of presence verification.</li>
+              <li>Upload your photo and metadata to permanent storage on Arweave.</li>
               <li>Approve the transaction when prompted to receive your NFT.</li>
             </ol>
             <ul className={styles.progressList}>

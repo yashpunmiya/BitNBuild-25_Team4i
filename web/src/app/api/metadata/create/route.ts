@@ -11,6 +11,12 @@ import type { FrameConfig } from '@/lib/frame';
 const schema = z.object({
   code: z.string().min(1),
   imageDataUrl: z.string().regex(/^data:image\/(png|jpeg);base64,/),
+  locationData: z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+    accuracy: z.number().optional(),
+    timestamp: z.number(),
+  }).optional(),
 });
 
 const parseDataUrl = (dataUrl: string): { contentType: string; buffer: Buffer } => {
@@ -101,16 +107,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ? trimmedDescription
         : `Proof of Presence for ${claim.events.name}`;
 
+    // Build attributes array with location data if available
+    const attributes = [
+      { trait_type: 'Event', value: claim.events.name },
+      { trait_type: 'Code', value: claim.code },
+    ];
+
+    if (payload.locationData) {
+      attributes.push(
+        { trait_type: 'Latitude', value: payload.locationData.latitude.toString() },
+        { trait_type: 'Longitude', value: payload.locationData.longitude.toString() },
+        { trait_type: 'Capture Time', value: new Date(payload.locationData.timestamp).toISOString() }
+      );
+      
+      if (payload.locationData.accuracy) {
+        attributes.push({ trait_type: 'Location Accuracy (m)', value: payload.locationData.accuracy.toString() });
+      }
+    }
+
     const metadataUri = await uploadMetadata(
       {
         name: nftName,
         symbol: 'POP',
         description,
         image: imageUri,
-        attributes: [
-          { trait_type: 'Event', value: claim.events.name },
-          { trait_type: 'Code', value: claim.code },
-        ],
+        attributes,
         properties: {
           files: [
             {
