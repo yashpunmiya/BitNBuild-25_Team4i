@@ -13,7 +13,7 @@ const WalletMultiButton = dynamic(
   {
     ssr: false,
     loading: () => (
-      <button className="ui-button ui-button-primary" disabled>
+      <button className={`${styles.actionButton} ${styles.primaryButton}`} disabled>
         Loading wallet…
       </button>
     ),
@@ -512,30 +512,23 @@ export default function OrganizerPage() {
                 🎟️
               </span>
               <div>
-                <span className="ui-pill">Organizer HQ</span>
+                
                 <p className={styles.sidebarTitle}>Event Console</p>
               </div>
             </div>
-            <p className={styles.sidebarSubtitle}>
-              Keep your drops organized, monitor claim inventory, and guide attendees through minting.
-            </p>
+            
           </div>
 
           <div className={styles.sidebarActions}>
             <WalletMultiButton />
-            <button className="ui-button ui-button-secondary" type="button" onClick={handleCopyFeePayerAddress}>
+            <button
+              className={`${styles.actionButton} ${styles.secondaryButton}`}
+              type="button"
+              onClick={handleCopyFeePayerAddress}
+            >
               Copy fee payer address
             </button>
-            <button
-              className="ui-button ui-button-ghost"
-              type="button"
-              onClick={() => {
-                void handleRequestAirdrop();
-              }}
-              disabled={funding}
-            >
-              {funding ? 'Requesting airdrop…' : 'Request devnet airdrop'}
-            </button>
+            
             {copyAddressMessage && <span className={styles.subtleNote}>{copyAddressMessage}</span>}
             {fundingMessage && <span className={styles.subtleNote}>{fundingMessage}</span>}
             {fundingError && <span className={styles.errorNote}>{fundingError}</span>}
@@ -612,7 +605,7 @@ export default function OrganizerPage() {
               <div className={styles.compactActions}>
                 <button
                   type="submit"
-                  className="ui-button ui-button-primary"
+                  className={`${styles.actionButton} ${styles.primaryButton}`}
                   disabled={loading || !eventName || !eventDescription}
                 >
                   {loading ? 'Creating event…' : 'Create event'}
@@ -721,7 +714,7 @@ export default function OrganizerPage() {
               <div className={styles.compactActions}>
                 <button
                   onClick={generateClaimCodes}
-                  className="ui-button ui-button-primary"
+                  className={`${styles.actionButton} ${styles.primaryButton}`}
                   disabled={loading || !selectedEventId}
                   type="button"
                 >
@@ -758,7 +751,11 @@ export default function OrganizerPage() {
                   <QRCodeSVG value={dynamicClaimUrl} size={220} includeMargin />
                 </div>
                 <p className={styles.qrLink}>{dynamicClaimUrl}</p>
-                <button className="ui-button ui-button-secondary" onClick={copyDynamicLink}>
+                <button
+                  className={`${styles.actionButton} ${styles.secondaryButton}`}
+                  onClick={copyDynamicLink}
+                  type="button"
+                >
                   Copy claim link
                 </button>
                 {copyMessage && <p className={styles.subtleNote}>{copyMessage}</p>}
@@ -840,7 +837,7 @@ export default function OrganizerPage() {
                   <div className={styles.actionRow}>
                     <button
                       type="button"
-                      className="ui-button ui-button-primary"
+                      className={`${styles.actionButton} ${styles.primaryButton}`}
                       onClick={() => {
                         void handleFrameSubmit();
                       }}
@@ -850,7 +847,7 @@ export default function OrganizerPage() {
                     </button>
                     <button
                       type="button"
-                      className="ui-button ui-button-ghost"
+                      className={`${styles.actionButton} ${styles.ghostButton}`}
                       onClick={() => {
                         setFrameUploadPreview(null);
                         setFrameTemplatePreview(selectedFrameEvent?.frameTemplateUrl ?? null);

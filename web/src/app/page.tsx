@@ -44,12 +44,13 @@ const heroSection: CSSProperties = {
 const heroImage: CSSProperties = {
   width: '100%',
   maxWidth: '440px',
-  marginTop: '1.75rem',
+  
   borderRadius: '32px',
-  boxShadow: '0 18px 40px rgba(250, 204, 21, 0.22)'
+
 };
 
 const heroTitle: CSSProperties = {
+ 
   fontSize: '3.5rem',
   lineHeight: 1.1,
   color: '#b45309',
