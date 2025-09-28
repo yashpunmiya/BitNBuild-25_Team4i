@@ -1,74 +1,27 @@
-﻿'use client';
+'use client';
 
 import { Buffer } from 'buffer';
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { VersionedTransaction } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 
+import styles from './claim.module.css';
+
 // Import WalletMultiButton with SSR disabled to prevent hydration mismatch
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletMultiButton),
-  { 
+  {
     ssr: false,
     loading: () => (
-      <button 
-        style={{
-          background: 'linear-gradient(135deg, #22d3ee, #0ea5e9)',
-          border: 'none',
-          borderRadius: '8px',
-          color: 'white',
-          padding: '0.5rem 1rem',
-          fontSize: '0.9rem',
-          fontWeight: '600',
-          cursor: 'not-allowed',
-          opacity: 0.7,
-          alignSelf: 'flex-start',
-        }}
-        disabled
-      >
-        Loading Wallet...
+      <button className={styles.walletLoading} disabled>
+        Loading wallet…
       </button>
-    )
-  }
+    ),
+  },
 );
-
-const containerStyle: CSSProperties = {
-  maxWidth: '720px',
-  margin: '0 auto',
-  padding: '2rem 1.5rem 4rem',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '2rem',
-};
-
-const cardStyle: CSSProperties = {
-  background: 'rgba(15, 23, 42, 0.6)',
-  border: '1px solid rgba(148, 163, 184, 0.2)',
-  borderRadius: '16px',
-  padding: '1.5rem',
-  boxShadow: '0 18px 65px rgba(15, 23, 42, 0.45)',
-};
-
-const buttonStyle: CSSProperties = {
-  background: 'linear-gradient(135deg, #22d3ee, #0ea5e9)',
-  border: 'none',
-  borderRadius: '12px',
-  color: '#0f172a',
-  fontWeight: 600,
-  padding: '0.85rem 1.6rem',
-  cursor: 'pointer',
-  fontSize: '1rem',
-};
-
-const secondaryButtonStyle: CSSProperties = {
-  ...buttonStyle,
-  background: 'transparent',
-  border: '1px solid rgba(148, 163, 184, 0.4)',
-  color: '#e2e8f0',
-};
 
 type ClaimStatus = 'idle' | 'uploading' | 'building' | 'signing' | 'finalizing' | 'success';
 type ClaimResponse = {
@@ -343,7 +296,7 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
 
   if (loading) {
     return (
-      <main style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <main className={styles.statePage}>
         <p>Loading event…</p>
       </main>
     );
@@ -351,7 +304,7 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
 
   if (error && !claim) {
     return (
-      <main style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <main className={styles.statePage}>
         <p>{error}</p>
       </main>
     );
@@ -359,154 +312,178 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
 
   if (!claim?.event) {
     return (
-      <main style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <main className={styles.statePage}>
         <p>Claim not available.</p>
       </main>
     );
   }
 
+  const isClaimComplete = status === 'success' || claim.status === 'claimed';
+  const statusTagClass = isClaimComplete ? styles.tag : `${styles.tag} ${styles.tagInactive}`;
+
   return (
-    <main style={containerStyle}>
-      <section style={cardStyle}>
-        <header style={{ marginBottom: '1rem' }}>
-          <p style={{ fontSize: '0.85rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.7 }}>
-            Claim Code • {claim.code}
-          </p>
-          <h1 style={{ fontSize: '2.25rem', marginTop: '0.4rem', marginBottom: '0.75rem' }}>{claim.event.name}</h1>
-          <p style={{ lineHeight: 1.6 }}>{claim.event.description}</p>
-        </header>
-        <WalletMultiButton style={{ alignSelf: 'flex-start' }} />
-      </section>
-
-      <section style={cardStyle}>
-        <h2 style={{ fontSize: '1.35rem', marginBottom: '1rem' }}>1. Capture your Proof of Presence</h2>
-        <div style={{ display: 'grid', gap: '1rem' }}>
-          <video
-            ref={videoRef}
-            style={{ width: '100%', borderRadius: '12px', display: photoData ? 'none' : 'block' }}
-            playsInline
-            muted
-          />
-          <canvas ref={canvasRef} style={{ display: 'none' }} />
-          {photoData && photoDimensions && (
-            <Image
-              src={photoData}
-              alt="Captured snapshot"
-              width={photoDimensions.width}
-              height={photoDimensions.height}
-              style={{ width: '100%', borderRadius: '12px', border: '1px solid rgba(148,163,184,0.3)', height: 'auto' }}
-              unoptimized
-            />
-          )}
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            {stream ? (
-              <button style={buttonStyle} onClick={capturePhoto} disabled={isBusy}>
-                Capture Snapshot
-              </button>
-            ) : (
-              <button style={buttonStyle} onClick={startCamera} disabled={isBusy}>
-                {photoData ? 'Retake Snapshot' : 'Start Camera'}
-              </button>
-            )}
-            {photoData && (
-              <button style={secondaryButtonStyle} onClick={resetFlow} disabled={isBusy}>
-                Retake
-              </button>
-            )}
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <section className={`${styles.card} ${styles.heroCard}`}>
+          <div className={styles.heroContent}>
+            <span className={styles.heroEyebrow}>Claim Code • {claim.code}</span>
+            <h1 className={styles.heroTitle}>{claim.event.name}</h1>
+            <p className={styles.heroDescription}>{claim.event.description}</p>
+            <div className={styles.summaryRow}>
+              <span className={statusTagClass}>{isClaimComplete ? 'Mint ready' : 'Awaiting proof'}</span>
+              <span>Collection: {claim.event.collectionMint}</span>
+            </div>
+            <div className={styles.detailList}>
+              <span>
+                <strong>Status:</strong> {claim.status}
+              </span>
+              {claim.wallet && (
+                <span>
+                  <strong>Claimed by:</strong> {claim.wallet}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+          <div className={styles.walletRow}>
+            <WalletMultiButton />
+          </div>
+        </section>
 
-      <section style={cardStyle}>
-        <h2 style={{ fontSize: '1.35rem', marginBottom: '1rem' }}>2. Mint your NFT</h2>
-        <ol style={{ paddingLeft: '1.2rem', marginBottom: '1.5rem', lineHeight: 1.8 }}>
-          <li>Connect a Solana wallet – the event organizer pays the fees.</li>
-          <li>Capture a clear snapshot to store permanently on Arweave.</li>
-          <li>Sign the mint transaction when prompted to receive your NFT.</li>
-        </ol>
-        <button style={buttonStyle} onClick={handleSubmit} disabled={isBusy}>
-          {status === 'success' ? 'Minted!' : 'Mint Proof of Presence'}
-        </button>
-        {isBusy && status !== 'idle' && status !== 'success' && (
-          <p style={{ marginTop: '1rem', opacity: 0.75 }}>{statusCopy[status]}</p>
-        )}
-        {buildDetails?.feePayer && (
-          <p style={{ marginTop: '1rem', fontSize: '0.9rem', opacity: 0.85 }}>
-            Organizer fee payer:{' '}
-            <a
-              href={`https://solscan.io/account/${buildDetails.feePayer}?cluster=devnet`}
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: '#22d3ee' }}
-            >
-              {shortenAddress(buildDetails.feePayer)}
-            </a>
-          </p>
-        )}
-        {signature && (
-          <p style={{ marginTop: '1rem', fontSize: '0.9rem' }}>
-            Transaction signature:{' '}
-            <a
-              href={`https://solscan.io/tx/${signature}?cluster=devnet`}
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: '#22d3ee' }}
-            >
-              {signature}
-            </a>
-          </p>
-        )}
-        {verifyLink && (
-          <p style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>
-            <Link href={verifyLink} style={{ color: '#22d3ee', textDecoration: 'underline' }}>
-              Verify this proof on the public portal ↗
-            </Link>
-          </p>
-        )}
-        {metadataInfo && (
-          <div style={{ marginTop: '1.5rem', background: 'rgba(15,23,42,0.45)', borderRadius: '12px', padding: '1rem' }}>
-            <h3 style={{ marginBottom: '0.75rem', fontSize: '1.05rem' }}>Snapshot upload</h3>
-            <p style={{ fontSize: '0.9rem', marginBottom: '0.35rem' }}>
-              Metadata:{' '}
-              <a
-                href={metadataInfo.metadataUri}
-                target="_blank"
-                rel="noreferrer"
-                style={{ color: '#22d3ee' }}
-              >
-                Open Arweave JSON
-              </a>
-            </p>
-            <p style={{ fontSize: '0.9rem', marginBottom: metadataInfo.imageUri ? '0.75rem' : 0 }}>
-              Image:{' '}
-              <a
-                href={metadataInfo.imageUri}
-                target="_blank"
-                rel="noreferrer"
-                style={{ color: '#22d3ee' }}
-              >
-                View snapshot
-              </a>
-            </p>
-            {metadataInfo.imageUri && (
+        <div className={styles.gridTwo}>
+          <section className={styles.card}>
+            <div>
+              <h2>1. Capture your proof of presence</h2>
+              <p className={styles.statusMessage}>
+                Start the camera, snap your event selfie, and we’ll use it to personalize your NFT badge.
+              </p>
+            </div>
+            <video
+              ref={videoRef}
+              className={`${styles.cameraFeed} ${photoData ? styles.hidden : ''}`}
+              playsInline
+              muted
+            />
+            <canvas ref={canvasRef} className={styles.hidden} />
+            {photoData && photoDimensions && (
               <Image
-                src={metadataInfo.imageUri}
-                alt="Arweave snapshot"
-                width={600}
-                height={600}
+                src={photoData}
+                alt="Captured snapshot"
+                width={photoDimensions.width}
+                height={photoDimensions.height}
+                className={styles.snapshotImage}
                 unoptimized
-                style={{ width: '100%', maxHeight: '280px', objectFit: 'cover', borderRadius: '10px', border: '1px solid rgba(148,163,184,0.25)' }}
               />
             )}
-            <p style={{ fontSize: '0.8rem', opacity: 0.65, marginTop: '0.75rem' }}>
-              Arweave links can take a minute or two to propagate. Refresh the tabs above if they initially 404.
-            </p>
-          </div>
-        )}
-        {error && (
-          <p style={{ marginTop: '1rem', color: '#fda4af' }}>{error}</p>
-        )}
-      </section>
+            <div className={styles.buttonRow}>
+              {stream ? (
+                <button className={styles.primaryButton} onClick={capturePhoto} disabled={isBusy}>
+                  Capture snapshot
+                </button>
+              ) : (
+                <button className={styles.primaryButton} onClick={startCamera} disabled={isBusy}>
+                  {photoData ? 'Retake snapshot' : 'Start camera'}
+                </button>
+              )}
+              {photoData && (
+                <button className={styles.secondaryButton} onClick={resetFlow} disabled={isBusy}>
+                  Retake
+                </button>
+              )}
+            </div>
+          </section>
+
+          <section className={styles.card}>
+            <div>
+              <h2>2. Mint your NFT</h2>
+              <ol className={styles.stepList}>
+                <li>Connect a Solana wallet – the organizer covers minting fees.</li>
+                <li>Capture and upload your snapshot to permanent storage.</li>
+                <li>Approve the transaction when prompted to receive your NFT.</li>
+              </ol>
+            </div>
+            <button className={styles.primaryButton} onClick={handleSubmit} disabled={isBusy}>
+              {status === 'success' ? 'Minted!' : 'Mint proof of presence'}
+            </button>
+            {isBusy && status !== 'idle' && status !== 'success' && (
+              <p className={styles.statusMessage}>{statusCopy[status]}</p>
+            )}
+            {buildDetails?.feePayer && (
+              <p className={styles.statusMessage}>
+                Organizer fee payer:{' '}
+                <a
+                  href={`https://solscan.io/account/${buildDetails.feePayer}?cluster=devnet`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={styles.infoLink}
+                >
+                  {shortenAddress(buildDetails.feePayer)}
+                </a>
+              </p>
+            )}
+            {signature && (
+              <p className={styles.statusMessage}>
+                Transaction signature:{' '}
+                <a
+                  href={`https://solscan.io/tx/${signature}?cluster=devnet`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={styles.infoLink}
+                >
+                  {signature}
+                </a>
+              </p>
+            )}
+            {verifyLink && (
+              <p className={styles.statusMessage}>
+                <Link href={verifyLink} className={styles.infoLink}>
+                  Verify this proof on the public portal ↗
+                </Link>
+              </p>
+            )}
+            {metadataInfo && (
+              <div className={styles.metadataPanel}>
+                <h3 className={styles.metadataTitle}>Snapshot upload</h3>
+                <p>
+                  Metadata:{' '}
+                  <a
+                    href={metadataInfo.metadataUri}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={styles.infoLink}
+                  >
+                    Open Arweave JSON
+                  </a>
+                </p>
+                <p>
+                  Image:{' '}
+                  <a
+                    href={metadataInfo.imageUri}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={styles.infoLink}
+                  >
+                    View snapshot
+                  </a>
+                </p>
+                {metadataInfo.imageUri && (
+                  <Image
+                    src={metadataInfo.imageUri}
+                    alt="Arweave snapshot"
+                    width={600}
+                    height={600}
+                    className={styles.metadataImage}
+                    unoptimized
+                  />
+                )}
+                <p className={styles.statusMessage}>
+                  Arweave links can take a minute or two to propagate. Refresh the tabs above if they initially 404.
+                </p>
+              </div>
+            )}
+            {error && <p className={styles.alert}>{error}</p>}
+          </section>
+        </div>
+      </div>
     </main>
   );
 }

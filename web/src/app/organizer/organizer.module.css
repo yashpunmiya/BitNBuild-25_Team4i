@@ -1,3 +1,207 @@
+.dashboard {
+  display: grid;
+  gap: clamp(1.5rem, 2vw + 1rem, 3rem);
+  padding: clamp(1.5rem, 2vw + 1.5rem, 3rem);
+}
+
+@media (min-width: 1100px) {
+  .dashboard {
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.sidebar {
+  position: sticky;
+  top: clamp(1rem, 2vw, 2.5rem);
+  display: grid;
+  gap: 1.75rem;
+  padding: clamp(1.4rem, 2vw + 1rem, 2.25rem);
+  border-radius: var(--radius-large);
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.85), rgba(30, 64, 175, 0.65));
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  box-shadow: 0 25px 65px rgba(15, 23, 42, 0.45);
+  color: #e2e8f0;
+}
+
+.sidebarHeader {
+  display: grid;
+  gap: 1rem;
+}
+
+.sidebarBrand {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.sidebarIcon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: rgba(56, 189, 248, 0.2);
+  color: #22d3ee;
+  font-size: 1.4rem;
+  box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.25);
+}
+
+.sidebarTitle {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.sidebarSubtitle {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: rgba(226, 232, 240, 0.8);
+}
+
+.sidebarActions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.sidebarStats {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.sidebarStat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.sidebarStatLabel {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(148, 163, 184, 0.75);
+}
+
+.sidebarStatValue {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.sidebarNav {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.sidebarNavLink {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  color: rgba(226, 232, 240, 0.9);
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.sidebarNavLink:hover,
+.sidebarNavLink:focus-visible {
+  background: rgba(56, 189, 248, 0.22);
+  color: #f8fafc;
+}
+
+.sidebarFooter {
+  display: grid;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: rgba(226, 232, 240, 0.7);
+}
+
+.sidebarAddress {
+  font-family: var(--font-geist-mono), 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  font-size: 0.82rem;
+  background: rgba(15, 23, 42, 0.45);
+  border-radius: 12px;
+  padding: 0.55rem 0.75rem;
+  border: 1px dashed rgba(56, 189, 248, 0.4);
+  word-break: break-all;
+}
+
+.sidebarActions button,
+.sidebarActions .wallet-adapter-button {
+  width: 100%;
+}
+
+.mainColumn {
+  display: grid;
+  gap: 2rem;
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-large);
+  padding: clamp(1.75rem, 2vw + 1.5rem, 2.75rem);
+  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.15), transparent 55%),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.6));
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  box-shadow: 0 22px 55px rgba(15, 23, 42, 0.4);
+  color: #e2e8f0;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.heroTitle {
+  font-size: clamp(1.9rem, 2vw + 1.5rem, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.heroSubtitle {
+  max-width: 46ch;
+  line-height: 1.7;
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 1rem;
+}
+
+.heroGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .heroGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.heroStat {
+  display: grid;
+  gap: 0.35rem;
+  background: rgba(15, 23, 42, 0.55);
+  border-radius: 16px;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.heroStatLabel {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(148, 163, 184, 0.7);
+}
+
+.heroStatValue {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
 .page {
   display: grid;
   gap: 2rem;
@@ -15,14 +219,14 @@
 }
 
 .sectionTitle {
-  font-size: 1.65rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
 .sectionSubtitle {
   color: var(--muted);
-  font-size: 1rem;
+  font-size: 0.98rem;
   line-height: 1.65;
 }
 
@@ -44,27 +248,9 @@
   }
 }
 
-.metricCard {
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: var(--radius-medium);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  padding: 1.2rem 1.35rem;
+.eventBoard {
   display: grid;
-  gap: 0.4rem;
-}
-
-.metricHeading {
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.metricValue {
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: var(--foreground);
+  gap: 1.25rem;
 }
 
 .eventCard {
@@ -72,9 +258,9 @@
   border: 1px solid rgba(148, 163, 184, 0.26);
   padding: 1.4rem 1.6rem;
   display: grid;
-  gap: 0.6rem;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: var(--shadow-soft);
+  gap: 0.75rem;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(226, 232, 240, 0.72));
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
 }
 
 .eventMeta {
@@ -86,7 +272,7 @@
 }
 
 .eventName {
-  font-size: 1.2rem;
+  font-size: 1.18rem;
   font-weight: 600;
   color: var(--foreground);
 }
@@ -94,11 +280,6 @@
 .eventDescription {
   color: var(--muted);
   line-height: 1.6;
-}
-
-.divider {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.3), transparent);
 }
 
 .formGrid {

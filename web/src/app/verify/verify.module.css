@@ -1,0 +1,239 @@
+.page {
+  min-height: 100vh;
+  padding: clamp(2.5rem, 3vw + 2rem, 4.5rem) clamp(1.25rem, 2vw + 1.25rem, 3rem) clamp(4rem, 4vw + 3rem, 6rem);
+  background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 45%),
+    radial-gradient(circle at bottom left, rgba(147, 197, 253, 0.18), transparent 55%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.86));
+  display: flex;
+  justify-content: center;
+  color: #e2e8f0;
+}
+
+.shell {
+  width: min(1100px, 100%);
+  display: grid;
+  gap: clamp(1.75rem, 2vw + 1.25rem, 2.75rem);
+}
+
+.card {
+  background: rgba(15, 23, 42, 0.7);
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: clamp(1.9rem, 2vw + 1.5rem, 2.75rem);
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.48);
+  display: grid;
+  gap: 1.75rem;
+}
+
+.heroHeader {
+  display: grid;
+  gap: 1rem;
+}
+
+.eyebrow {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.7);
+}
+
+.title {
+  font-size: clamp(2.1rem, 2vw + 1.6rem, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.sectionTitle {
+  font-size: clamp(1.6rem, 1vw + 1.2rem, 2rem);
+  font-weight: 600;
+}
+
+.subtitle {
+  line-height: 1.7;
+  color: rgba(226, 232, 240, 0.8);
+  max-width: 70ch;
+}
+
+.form {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.inputRow {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 960px) {
+  .inputRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.label {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.label span {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(226, 232, 240, 0.7);
+}
+
+.input {
+  width: 100%;
+  padding: 0.95rem 1.05rem;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.8);
+  color: #e2e8f0;
+  font-size: 0.95rem;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+
+.primaryButton {
+  background: linear-gradient(135deg, #22d3ee, #0ea5e9);
+  border: none;
+  border-radius: 14px;
+  color: #0f172a;
+  padding: 0.95rem 1.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.primaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.primaryButton:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 40px rgba(14, 165, 233, 0.35);
+}
+
+.secondaryLink {
+  color: #38bdf8;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.secondaryLink:hover {
+  text-decoration: underline;
+}
+
+.inlineError {
+  color: #f87171;
+  font-size: 0.95rem;
+}
+
+.warningList {
+  list-style: disc;
+  padding-left: 1.5rem;
+  color: #facc15;
+  font-size: 0.9rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.stateMessage {
+  opacity: 0.8;
+  font-size: 0.95rem;
+}
+
+.resultList {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.resultCard {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 18px;
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.62);
+  display: grid;
+  gap: 1.2rem;
+}
+
+.resultHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(226, 232, 240, 0.1);
+  color: rgba(226, 232, 240, 0.85);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.pillMinted {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.18);
+  color: #bbf7d0;
+}
+
+.resultTitle {
+  font-size: 1.35rem;
+  margin: 0;
+}
+
+.resultSubtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(226, 232, 240, 0.75);
+}
+
+.detailGrid {
+  display: grid;
+  gap: 0.45rem;
+  font-size: 0.95rem;
+}
+
+.detailGrid strong {
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.resultLink {
+  color: #38bdf8;
+  text-decoration: none;
+}
+
+.resultLink:hover {
+  text-decoration: underline;
+}
+
+.timestampRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+  font-size: 0.85rem;
+  color: rgba(226, 232, 240, 0.7);
+}
