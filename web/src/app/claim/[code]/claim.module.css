@@ -1,0 +1,266 @@
+.page {
+  min-height: 100vh;
+  padding: clamp(2.5rem, 3vw + 2rem, 4.5rem) clamp(1.25rem, 2vw + 1.25rem, 3rem) clamp(4rem, 4vw + 3rem, 6rem);
+  background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 45%),
+    radial-gradient(circle at bottom left, rgba(147, 197, 253, 0.15), transparent 50%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.82));
+  display: flex;
+  justify-content: center;
+  color: #e2e8f0;
+}
+
+.statePage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.85));
+  color: #e2e8f0;
+}
+
+.shell {
+  width: min(1120px, 100%);
+  display: grid;
+  gap: clamp(1.75rem, 2vw + 1.25rem, 2.75rem);
+}
+
+.card {
+  background: rgba(15, 23, 42, 0.68);
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  padding: clamp(1.75rem, 2vw + 1.5rem, 2.6rem);
+  box-shadow: 0 30px 75px rgba(15, 23, 42, 0.45);
+  display: grid;
+  gap: 1.25rem;
+}
+
+.heroCard {
+  position: relative;
+  overflow: hidden;
+}
+
+.heroCard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 55%);
+}
+
+.heroContent {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+}
+
+.heroEyebrow {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.7);
+}
+
+.heroTitle {
+  font-size: clamp(2rem, 2vw + 1.6rem, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.heroDescription {
+  line-height: 1.7;
+  color: rgba(226, 232, 240, 0.8);
+  max-width: 56ch;
+}
+
+.walletRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.walletLoading {
+  background: linear-gradient(135deg, #22d3ee, #0ea5e9);
+  border: none;
+  border-radius: 14px;
+  color: #0f172a;
+  padding: 0.85rem 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.gridTwo {
+  display: grid;
+  gap: clamp(1.5rem, 2vw + 1rem, 2.5rem);
+}
+
+@media (min-width: 960px) {
+  .gridTwo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.cameraFeed {
+  width: 100%;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.1);
+}
+
+.snapshotImage {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.35);
+  height: auto;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+}
+
+.primaryButton {
+  background: linear-gradient(135deg, #22d3ee, #0ea5e9);
+  border: none;
+  border-radius: 14px;
+  color: #0f172a;
+  padding: 0.85rem 1.6rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.primaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.primaryButton:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 35px rgba(14, 165, 233, 0.35);
+}
+
+.secondaryButton {
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  color: #e2e8f0;
+  border-radius: 14px;
+  padding: 0.85rem 1.6rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border 0.2s ease;
+}
+
+.secondaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondaryButton:not(:disabled):hover {
+  background: rgba(148, 163, 184, 0.18);
+  border-color: rgba(226, 232, 240, 0.45);
+}
+
+.stepList {
+  padding-left: 1.2rem;
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+  line-height: 1.75;
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.statusMessage {
+  opacity: 0.8;
+  font-size: 0.95rem;
+}
+
+.infoLink {
+  color: #38bdf8;
+  text-decoration: none;
+}
+
+.infoLink:hover {
+  text-decoration: underline;
+}
+
+.metadataPanel {
+  margin-top: 1.25rem;
+  background: rgba(15, 23, 42, 0.55);
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 1.2rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.metadataTitle {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.metadataImage {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.alert {
+  color: #fda4af;
+  font-weight: 500;
+}
+
+.summaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.95rem;
+  color: rgba(226, 232, 240, 0.85);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #bbf7d0;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tagInactive {
+  background: rgba(226, 232, 240, 0.1);
+  border-color: rgba(148, 163, 184, 0.3);
+  color: rgba(226, 232, 240, 0.7);
+}
+
+.detailList {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.92rem;
+  color: rgba(226, 232, 240, 0.75);
+}
+
+.detailList strong {
+  color: #f8fafc;
+  font-weight: 600;
+}
