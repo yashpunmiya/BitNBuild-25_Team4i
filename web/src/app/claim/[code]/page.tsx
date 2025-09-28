@@ -484,20 +484,20 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
             {/* Location Status */}
             <div className={styles.locationStatus}>
               {locationLoading && (
-                <p className={styles.locationLoading}>📍 Getting your location...</p>
+                <p className={styles.locationLoading}>Getting your location...</p>
               )}
               {locationError && (
                 <p className={styles.locationError}>⚠️ {locationError}</p>
               )}
               {locationData && (
                 <p className={styles.locationSuccess}>
-                  ✅ Location captured ({locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)})
+                  Location captured ({locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)})
                   {locationData.accuracy && ` - Accuracy: ${Math.round(locationData.accuracy)}m`}
                 </p>
               )}
               {!locationData && !locationLoading && !locationError && photoData && (
                 <p className={styles.locationWarning}>
-                  ⚠️ Location not captured - NFT will be minted without location verification
+                  Location not captured - NFT will be minted without location verification
                 </p>
               )}
             </div>
