@@ -77,10 +77,10 @@ export default function OrganizerPage() {
 
   const [selectedFrameEventId, setSelectedFrameEventId] = useState('');
   const [frameConfigInputs, setFrameConfigInputs] = useState({
-    x: 320,
-    y: 320,
-    width: 640,
-    height: 640,
+    x: 207,
+    y: 233,
+    width: 301,
+    height: 301,
     borderRadius: 0,
   });
   const [frameUploadPreview, setFrameUploadPreview] = useState<string | null>(null);
@@ -332,9 +332,33 @@ export default function OrganizerPage() {
             y: frameConfigInputs.y,
             width: frameConfigInputs.width,
             height: frameConfigInputs.height,
-        </section>
-        
-        <section id="event-hub" className={`${styles.compactCard} surface-card`}>
+            borderRadius: frameConfigInputs.borderRadius,
+          },
+        },
+      };
+
+      if (frameUploadPreview) {
+        payload.frameDataUrl = frameUploadPreview;
+      }
+
+      const response = await fetch('/api/events/frame/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.error ?? 'Failed to update frame');
+      }
+
+      const updatedEvent = data?.event as Event | undefined;
+      if (updatedEvent) {
+        setEvents((prev) =>
+          prev.map((event) => (event.id === updatedEvent.id ? updatedEvent : event)),
+        );
+        setFrameTemplatePreview(updatedEvent.frameTemplateUrl ?? frameUploadPreview ?? null);
         setFrameUploadPreview(null);
       }
 
@@ -408,7 +432,7 @@ export default function OrganizerPage() {
     if (!selectedFrameEvent) {
       setFrameTemplatePreview(null);
       setFrameUploadPreview(null);
-      setFrameConfigInputs((prev) => ({ ...prev, x: 320, y: 320, width: 640, height: 640 }));
+      setFrameConfigInputs((prev) => ({ ...prev, x: 207, y: 233, width: 301, height: 301 }));
       setFramePreviewNaturalSize(null);
       setFramePreviewDisplaySize(null);
       setFrameError(null);
@@ -532,8 +556,6 @@ export default function OrganizerPage() {
             </div>
           </div>
 
-          
-
           <div className={styles.sidebarFooter}>
             <span>Fee payer wallet</span>
             <code className={styles.sidebarAddress}>{feePayerAddress}</code>
@@ -543,218 +565,174 @@ export default function OrganizerPage() {
           </div>
         </aside>
 
-        <section id="event-creation" className={`${styles.panelCard} surface-card surface-card--accent`}>
-          <div className={styles.sectionIntro}>
-            <h2 className={styles.sectionTitle}>Create New Event</h2>
-            <p className={styles.sectionSubtitle}>
-              Manage live events and minting from the console on the left.
-            </p>
-          </div>
-          {(error || success) && (
-            <div className={styles.feedbackRow}>
-              {error && <div className="ui-alert ui-alert--critical">{error}</div>}
-              {success && !error && <div className="ui-alert">{success}</div>}
+        <section id="event-hub" className={`${styles.compactCard} surface-card`}>
+          <div className={styles.compactHeader}>
+            <div>
+              <h2 className={styles.sectionTitle}>Create & Track Events</h2>
+              <p className={styles.sectionSubtitle}>
+                Launch collections and review everything minted so far in one glance.
+              </p>
             </div>
-          )}
-          <form onSubmit={createEvent} className={styles.formGrid}>
-            <label className="ui-label" htmlFor="event-name">
-              Event name
-              <input
-                id="event-name"
-                type="text"
-                placeholder="Event Name (e.g., 'Conference 2025')"
-                value={eventName}
-                onChange={(e) => setEventName(e.target.value)}
-                className="ui-input"
-                required
-              />
-            </label>
-            <label className="ui-label" htmlFor="event-description">
-              Event description
-              <textarea
-                id="event-description"
-                placeholder="Event Description"
-                value={eventDescription}
-                onChange={(e) => setEventDescription(e.target.value)}
-                className="ui-textarea"
-                required
-              />
-            </label>
-            <button
-              type="submit"
-              className="ui-button ui-button-primary"
-              disabled={loading || !eventName || !eventDescription}
-            >
-              {loading ? 'Creating event…' : 'Create event & mint collection NFT'}
-            </button>
-          </form>
-        </section>
-          <section id="event-hub" className={`${styles.compactCard} surface-card`}>
-            <header className={styles.compactHeader}>
-              <div>
-                <h2 className={styles.sectionTitle}>Create & Track Events</h2>
-                <p className={styles.sectionSubtitle}>
-                  Launch a collection and review everything minted so far in one glance.
-                </p>
+            {(error || success) && (
+              <div className={styles.compactFeedback}>
+                {error && <div className="ui-alert ui-alert--critical">{error}</div>}
+                {success && !error && <div className="ui-alert">{success}</div>}
               </div>
-              {success && <p className={`${styles.alert} ${styles.alertSuccess}`}>{success}</p>}
-              {error && <p className={`${styles.alert} ${styles.alertError}`}>{error}</p>}
-            </header>
+            )}
+          </div>
 
-            <div className={styles.compactBody}>
-              <form onSubmit={createEvent} className={styles.compactForm}>
-                <div className={styles.formGridColumns}>
-                  <label className="ui-label">
-                    Event name
-                    <input
-                      type="text"
-                      placeholder="Event Name"
-                      value={eventName}
-                      onChange={(e) => setEventName(e.target.value)}
-                      className="ui-input"
-                      required
-                    />
-                  </label>
-                  <label className="ui-label">
-                    Event description
-                    <textarea
-                      placeholder="Event Description"
-                      value={eventDescription}
-                      onChange={(e) => setEventDescription(e.target.value)}
-                      className="ui-textarea"
-                      rows={3}
-                      required
-                    />
-                  </label>
-                </div>
+          <div className={styles.compactBody}>
+            <form onSubmit={createEvent} className={styles.compactForm}>
+              <div className={styles.compactFormGrid}>
+                <label className="ui-label" htmlFor="event-name-compact">
+                  Event name
+                  <input
+                    id="event-name-compact"
+                    type="text"
+                    placeholder="Event Name"
+                    value={eventName}
+                    onChange={(e) => setEventName(e.target.value)}
+                    className="ui-input"
+                    required
+                  />
+                </label>
+                <label className="ui-label" htmlFor="event-description-compact">
+                  Event description
+                  <textarea
+                    id="event-description-compact"
+                    placeholder="Event Description"
+                    value={eventDescription}
+                    onChange={(e) => setEventDescription(e.target.value)}
+                    className="ui-textarea"
+                    rows={3}
+                    required
+                  />
+                </label>
+              </div>
+              <div className={styles.compactActions}>
                 <button
                   type="submit"
                   className="ui-button ui-button-primary"
                   disabled={loading || !eventName || !eventDescription}
                 >
-                  {loading ? 'Creating event…' : 'Create event & mint collection'}
+                  {loading ? 'Creating event…' : 'Create event'}
                 </button>
-              </form>
-
-              <div className={styles.compactList}>
-                <span className={styles.listLabel}>Recent events</span>
-                {events.length === 0 ? (
-                  <p className={styles.subtleNote}>No events yet—mint the first one above.</p>
-                ) : (
-                  <ul className={styles.eventList}>
-                    {events.map((event) => (
-                      <li key={event.id} className={styles.eventListItem}>
-                        <div>
-                          <p className={styles.eventListTitle}>{event.name}</p>
-                          <p className={styles.eventListMeta}>
-                            {new Date(event.createdAt).toLocaleDateString()} • Collection {event.collectionMint}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
-            </div>
-          </section>
+            </form>
 
-        <section id="events" className={`${styles.panelCard} surface-card`}>
-          <div className={styles.sectionIntro}>
-            <h2 className={styles.sectionTitle}>Your Events</h2>
-            <p className={styles.sectionSubtitle}>
-              Keep tabs on the collections you’ve launched for on-site minting.
-            </p>
-          </div>
-          {events.length === 0 ? (
-            <p className={styles.subtleNote}>No events created yet.</p>
-          ) : (
-            <div className={styles.eventBoard}>
-              {events.map((event) => (
-                <div key={event.id} className={styles.eventCard}>
-                  <h3 className={styles.eventName}>{event.name}</h3>
-                  <p className={styles.eventDescription}>{event.description}</p>
-                  <div className={styles.eventMeta}>
-                    <span>Collection: {event.collectionMint}</span>
-                    <span>Created: {new Date(event.createdAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              ))}
+            <div className={styles.compactList}>
+              <div className={styles.listHeading}>
+                <span className={styles.listLabel}>Recent events</span>
+                {events.length > 0 && <span className={styles.listCount}>{events.length}</span>}
+              </div>
+              {events.length === 0 ? (
+                <p className={styles.subtleNote}>No events yet—mint the first one above.</p>
+              ) : (
+                <ul className={styles.eventList}>
+                  {events.map((event) => (
+                    <li key={event.id} className={styles.eventListItem}>
+                      <div>
+                        <p className={styles.eventListTitle}>{event.name}</p>
+                        <p className={styles.eventListMeta}>
+                          {new Date(event.createdAt).toLocaleDateString()} • Collection{' '}
+                          {shortenValue(event.collectionMint, 6)}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-          )}
-        </section>
-
-        <section id="codes-ledger" className={`${styles.sidebarFollow} surface-card`}>
-          <div className={styles.sectionIntro}>
-            <h2 className={styles.sectionTitle}>Claim Codes</h2>
-            <p className={styles.sectionSubtitle}>
-              Track issued codes and test the claim flow directly from here.
-            </p>
-          </div>
-          {claimCodes.length === 0 ? (
-            <p className={styles.subtleNote}>No codes yet—generate a batch to see them listed here.</p>
-          ) : (
-            <div className={styles.codeList}>
-              {claimCodes.map((code) => (
-                <div key={code.id} className={styles.codeItem}>
-                  <span className={styles.codeValue}>{code.code}</span>
-                  <div className={styles.codeActions}>
-                    <span className={`${styles.codeStatus} ${getStatusClass(code.status)}`}>{code.status}</span>
-                    <a
-                      href={`/claim/${code.code}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.codeLink}
-                    >
-                      Test →
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section id="claim-codes" className={`${styles.panelCard} surface-card surface-card--accent`}>
-          <div className={styles.sectionIntro}>
-            <h2 className={styles.sectionTitle}>Generate Claim Codes</h2>
-            <p className={styles.sectionSubtitle}>
-              Create batches of one-time claim codes to distribute at your event check-in.
-            </p>
-          </div>
-          <div className={styles.sectionGroup}>
-            <select
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className="ui-input"
-            >
-              <option value="">Select an event</option>
-              {events.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.name}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              placeholder="Number of claim codes"
-              value={numCodes}
-              onChange={(e) => setNumCodes(Number.parseInt(e.target.value, 10) || 1)}
-              min="1"
-              max="100"
-              className="ui-input"
-            />
-            <button
-              onClick={generateClaimCodes}
-              className="ui-button ui-button-primary"
-              disabled={loading || !selectedEventId}
-              type="button"
-            >
-              {loading ? 'Generating…' : `Generate ${numCodes} claim codes`}
-            </button>
           </div>
         </section>
 
-        <section id="dynamic-qr" className={`${styles.panelCard} surface-card`}>
+        <section id="code-hub" className={`${styles.compactCard} surface-card surface-card--accent`}>
+          <div className={styles.compactHeader}>
+            <div>
+              <h2 className={styles.sectionTitle}>Claim Codes</h2>
+              <p className={styles.sectionSubtitle}>
+                Review live codes and spin up fresh batches without leaving this card.
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.compactBody}>
+            <div className={`${styles.compactList} ${styles.codeListCompact}`}>
+              <div className={styles.listHeading}>
+                <span className={styles.listLabel}>Live inventory</span>
+                {claimCodes.length > 0 && <span className={styles.listCount}>{claimCodes.length}</span>}
+              </div>
+              {claimCodes.length === 0 ? (
+                <p className={styles.subtleNote}>No codes yet—generate a batch below.</p>
+              ) : (
+                <ul className={styles.codeListCompactItems}>
+                  {claimCodes.map((code) => (
+                    <li key={code.id} className={styles.codeListItem}>
+                      <span className={styles.codeValue}>{code.code}</span>
+                      <div className={styles.codeActions}>
+                        <span className={`${styles.codeStatus} ${getStatusClass(code.status)}`}>{code.status}</span>
+                        <a
+                          href={`/claim/${code.code}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.codeLink}
+                        >
+                          Test →
+                        </a>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <form className={styles.compactForm}>
+              <div className={styles.compactFormGrid}>
+                <label className="ui-label" htmlFor="code-event-select">
+                  Event
+                  <select
+                    id="code-event-select"
+                    value={selectedEventId}
+                    onChange={(e) => setSelectedEventId(e.target.value)}
+                    className="ui-input"
+                  >
+                    <option value="">Select an event</option>
+                    {events.map((event) => (
+                      <option key={event.id} value={event.id}>
+                        {event.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="ui-label" htmlFor="code-count-input">
+                  Quantity
+                  <input
+                    id="code-count-input"
+                    type="number"
+                    placeholder="Number of codes"
+                    value={numCodes}
+                    onChange={(e) => setNumCodes(Number.parseInt(e.target.value, 10) || 1)}
+                    min="1"
+                    max="100"
+                    className="ui-input"
+                  />
+                </label>
+              </div>
+              <div className={styles.compactActions}>
+                <button
+                  onClick={generateClaimCodes}
+                  className="ui-button ui-button-primary"
+                  disabled={loading || !selectedEventId}
+                  type="button"
+                >
+                  {loading ? 'Generating…' : `Generate ${numCodes} codes`}
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+  <section id="dynamic-qr" className={`${styles.panelCard} ${styles.dynamicQRCard} surface-card`}>
           <div className={styles.sectionIntro}>
             <h2 className={styles.sectionTitle}>Dynamic Claim QR</h2>
             <p className={styles.sectionSubtitle}>
@@ -795,7 +773,7 @@ export default function OrganizerPage() {
           </div>
         </section>
 
-        <section id="frame-template" className={`${styles.frameSpan} surface-card surface-card--accent`}>
+  <section id="frame-template" className={`${styles.frameSpan} ${styles.frameTemplateWide} surface-card surface-card--accent`}>
           <div className={styles.sectionIntro}>
             <h2 className={styles.sectionTitle}>Event Frame Template</h2>
             <p className={styles.sectionSubtitle}>

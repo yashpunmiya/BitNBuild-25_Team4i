@@ -479,8 +479,9 @@ export default function ClaimPage({ params }: { params: Promise<{ code: string }
                   target="_blank"
                   rel="noreferrer"
                   className={styles.infoLink}
+                  title={signature}
                 >
-                  {signature}
+                  {shortenAddress(signature)}
                 </a>
               </p>
             )}
